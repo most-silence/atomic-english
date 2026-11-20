@@ -122,6 +122,18 @@ body {
   border-color: transparent transparent transparent #1c1c1e;
 }
 
+.review-summary {
+  font-size: 13px;
+  color: #8e8e93;
+  margin: -6px 0 16px;
+}
+.review-empty {
+  text-align: center;
+  color: #b0b0b5;
+  font-size: 14px;
+  margin-top: 40px;
+}
+
 /* 挑战详情页 */
 .challenge-meta {
   text-align: center;

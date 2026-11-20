@@ -1,19 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   buildReviewItems,
+  courseProgress,
+  currentChallenge,
   currentStreak,
   initialProgress,
-  scoreTranscript,
+  markCompleted,
+  reviewItemAfterPractice,
   SEED_CHALLENGES,
+  scoreTranscript,
+  todayISO,
+  weeklyCompletion,
+  type Attempt,
   type Progress,
   type ReviewItem,
   type ScoreResult,
 } from '@atomic/domain';
 import {
+  loadAttempts,
   loadProgress,
   loadReviewItems,
+  resetAll,
   saveAttempt,
   saveProgress,
+  saveReviewItem,
   saveReviewItems,
 } from '@atomic/db';
 import Header from './components/Header';
@@ -22,100 +32,170 @@ import ChallengePage from './pages/ChallengePage';
 import ReviewPage from './pages/ReviewPage';
 import StreakPage from './pages/StreakPage';
 
-const CHALLENGE = SEED_CHALLENGES[0];
-const DEMO_DATE = '2026-11-20T10:00:00Z';
+interface Session {
+  progress: Progress;
+  attempts: Attempt[];
+  reviewItems: ReviewItem[];
+}
+
+/** 跨天重置：若 progress.currentDate 不是今天，重置每日额度与播放计数 */
+function normalizeDaily(progress: Progress, today: string): Progress {
+  if (progress.currentDate === today) return progress;
+  return { ...progress, currentDate: today, todayPlayCount: 0, freeTranslationsLeft: 6 };
+}
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('challenge');
-  const [progress, setProgress] = useState<Progress | null>(null);
-  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
-  const [transcript, setTranscript] = useState('I start');
-  const [playCount, setPlayCount] = useState(4);
-  const [lastScore, setLastScore] = useState<ScoreResult | null>(null);
-  const [resetToken, setResetToken] = useState(0);
+  const [session, setSession] = useState<Session | null>(null);
+  const [transcript, setTranscript] = useState('');
+  const [playCount, setPlayCount] = useState(0);
+  const [submitted, setSubmitted] = useState<ScoreResult | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [key, setKey] = useState(0);
+  // 提交最后一题后仍要展示判分，等用户确认才进通关页
+  const [lastChallenge, setLastChallenge] = useState<typeof SEED_CHALLENGES[number] | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
+  // 启动 / 重置后：从 IndexedDB 恢复真实状态（唯一入口）
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      let p = await loadProgress();
-      if (!p) {
-        p = initialProgress();
-        p.streak = 1;
-        p.todayPlayCount = 4;
-        p.completedChallengeIds = [CHALLENGE.id];
-        // 截图 A 观测值为 13%；1/7≈14.3% 与原产品不符，故演示态直接采用观测值
-        // （原产品很可能按更细的粒度计权，无源码不臆断，见 reverse 文档 §2.4）
-        p.weeklyCompletion = 0.13;
-        await saveProgress(p);
-        const result = scoreTranscript('I start', CHALLENGE.sentence);
-        await saveAttempt({
-          challengeId: CHALLENGE.id,
-          transcript: 'I start',
-          playCount: 4,
-          accuracy: result.accuracy,
-          createdAt: DEMO_DATE,
-        });
-        const items = buildReviewItems(CHALLENGE.id, CHALLENGE.sentence, result.accuracy);
-        await saveReviewItems(items);
+      const today = todayISO();
+      let progress = await loadProgress();
+      if (!progress) {
+        progress = initialProgress();
+        await saveProgress(progress);
       }
-      setProgress(p);
-      setReviewItems(await loadReviewItems());
+      progress = normalizeDaily(progress, today);
+      if (progress.currentDate !== today) await saveProgress(progress);
+      if (cancelled) return;
+      setSession({
+        progress,
+        attempts: await loadAttempts(),
+        reviewItems: await loadReviewItems(),
+      });
     })();
+    return () => { cancelled = true; };
+  }, [reloadToken]);
+
+  const updateSession = useCallback((patch: Partial<Session> | ((s: Session) => Partial<Session>)) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const resolved = typeof patch === 'function' ? patch(prev) : patch;
+      const next = { ...prev, ...resolved };
+      void saveProgress(next.progress);
+      return next;
+    });
   }, []);
 
-  if (!progress) {
+  if (!session) {
     return <div className="app"><Header /><div className="page" /></div>;
   }
 
-  const streak = currentStreak(
-    progress.completedChallengeIds.map((id) => {
-      const d = id === CHALLENGE.id ? DEMO_DATE : new Date().toISOString();
-      return d;
-    }),
-    new Date('2026-11-21T12:00:00'),
-  ) || progress.streak;
+  const { progress, attempts, reviewItems } = session;
+  const today = todayISO();
+  const streak = currentStreak(progress.completedDates);
+  const completion = weeklyCompletion(progress.completedDates);
+  const nextChallenge = currentChallenge(SEED_CHALLENGES, attempts);
+  // 未提交时渲染待作答的下一题；提交后锁定在刚作答的题上展示判分，
+  // 直到用户点"下一题"才解锁——避免提交瞬间被切走、看不到判分与译文。
+  const challenge = submitted && lastChallenge ? lastChallenge : nextChallenge;
+  const course = courseProgress(SEED_CHALLENGES, attempts);
+
+  // 全部做完且没有待确认的最后一题：展示通关态
+  if (!challenge) {
+    return (
+      <div className="app">
+        <Header />
+        <div className="page">
+          <div className="streak-hero">
+            <div className="streak-number">{course.completed}</div>
+            <div className="streak-caption">已完成 {course.total} 道挑战 · 连续 {streak} 天</div>
+          </div>
+          <p style={{ textAlign: 'center', color: '#8e8e93', fontSize: 14, lineHeight: 1.7 }}>
+            本周完成率 {Math.round(completion * 100)}%<br />
+            复习词条 {reviewItems.length} 个
+          </p>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={async () => {
+              await resetAll();
+              setSession(null);
+              setReloadToken((n) => n + 1);
+              setTranscript('');
+              setPlayCount(0);
+              setSubmitted(null);
+              setLastChallenge(null);
+              setShowTranslation(false);
+              setKey((n) => n + 1);
+            }}
+          >
+            重置进度，再跑一遍
+          </button>
+        </div>
+        <BottomNav active={tab} onChange={setTab} />
+      </div>
+    );
+  }
 
   const bumpPlayCount = () => {
-    setProgress((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, todayPlayCount: prev.todayPlayCount + 1 };
-      void saveProgress(next);
-      return next;
-    });
+    updateSession((s) => ({
+      progress: { ...s.progress, todayPlayCount: s.progress.todayPlayCount + 1 },
+    }));
   };
 
   const handleSubmit = (result: ScoreResult, text: string, plays: number) => {
-    setLastScore(result);
+    setSubmitted(result);
+    setLastChallenge(challenge);
     setTranscript(text);
     setPlayCount(plays);
-    void saveAttempt({
-      challengeId: CHALLENGE.id,
+    const attempt: Attempt = {
+      challengeId: challenge.id,
       transcript: text,
       playCount: plays,
       accuracy: result.accuracy,
       createdAt: new Date().toISOString(),
-    });
-    const items = buildReviewItems(CHALLENGE.id, CHALLENGE.sentence, result.accuracy);
-    void saveReviewItems(items);
-    setReviewItems(items);
-    setProgress((prev) => {
-      if (!prev) return prev;
-      const next = {
-        ...prev,
-        completedChallengeIds: Array.from(new Set([...prev.completedChallengeIds, CHALLENGE.id])),
-        freeTranslationsLeft: prev.freeTranslationsLeft,
-      };
-      void saveProgress(next);
-      return next;
-    });
+    };
+    void saveAttempt(attempt);
+    const newItems = buildReviewItems(challenge.id, challenge.sentence, result.accuracy);
+    void saveReviewItems(newItems);
+    updateSession((s) => ({
+      progress: {
+        ...s.progress,
+        completedDates: markCompleted(s.progress.completedDates, today),
+      },
+      attempts: [...s.attempts, attempt],
+      reviewItems: mergeReviewItems(s.reviewItems, newItems),
+    }));
   };
 
   const handleTranslate = () => {
-    setProgress((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, freeTranslationsLeft: Math.max(0, prev.freeTranslationsLeft - 1) };
-      void saveProgress(next);
-      return next;
-    });
+    updateSession((s) => ({
+      progress: {
+        ...s.progress,
+        freeTranslationsLeft: Math.max(0, s.progress.freeTranslationsLeft - 1),
+      },
+    }));
+  };
+
+  const handleNext = () => {
+    setSubmitted(null);
+    setLastChallenge(null);
+    setShowTranslation(false);
+    setTranscript('');
+    setPlayCount(0);
+    setKey((n) => n + 1);
+  };
+
+  const handlePracticeWord = (item: ReviewItem, accuracy: number) => {
+    const updated = reviewItemAfterPractice(item, accuracy);
+    void saveReviewItem(updated);
+    updateSession((s) => ({
+      reviewItems: s.reviewItems.map((r) =>
+        r.word === item.word && r.sourceChallengeId === item.sourceChallengeId ? updated : r,
+      ),
+    }));
   };
 
   return (
@@ -123,33 +203,40 @@ export default function App() {
       <Header />
       {tab === 'challenge' && (
         <ChallengePage
-          key={resetToken}
-          challenge={CHALLENGE}
+          key={`${key}-${challenge.id}`}
+          challenge={challenge}
           streak={streak}
           initialTranscript={transcript}
           initialPlayCount={playCount}
-          initialScore={lastScore === null && resetToken === 0
-            ? scoreTranscript('I start', CHALLENGE.sentence) : lastScore}
-          initialShowTranslation={resetToken === 0}
+          initialScore={submitted}
+          initialShowTranslation={showTranslation}
           freeTranslationsLeft={progress.freeTranslationsLeft}
           onPlay={bumpPlayCount}
           onSubmit={handleSubmit}
           onTranslate={handleTranslate}
-          onNext={() => { setLastScore(null); setResetToken((n) => n + 1); }}
+          onNext={handleNext}
         />
       )}
       {tab === 'streak' && (
-        <StreakPage streak={streak} completion={progress.weeklyCompletion} />
+        <StreakPage streak={streak} completion={completion} />
       )}
       {tab === 'review' && (
         <ReviewPage
           items={reviewItems}
-          completion={progress.weeklyCompletion}
+          completion={completion}
           playCount={progress.todayPlayCount}
           onPlay={bumpPlayCount}
+          onPractice={handlePracticeWord}
         />
       )}
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );
+}
+
+function mergeReviewItems(existing: ReviewItem[], incoming: ReviewItem[]): ReviewItem[] {
+  const map = new Map<string, ReviewItem>();
+  for (const item of existing) map.set(`${item.sourceChallengeId}:${item.word}`, item);
+  for (const item of incoming) map.set(`${item.sourceChallengeId}:${item.word}`, item);
+  return [...map.values()].sort((a, b) => a.word.localeCompare(b.word));
 }

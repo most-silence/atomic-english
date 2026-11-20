@@ -44,10 +44,31 @@ export function buildReviewItems(
   accuracy: number,
   now: Date = new Date(),
 ): ReviewItem[] {
-  const nextReviewAt = nextReviewDate(accuracy, now);
+  // 新抽出的词条立即进入"待复习"（now），答对后复习才推后到 nextReviewDate。
+  // 这样刚作答完就能在复习 tab 看到错词，与截图行为一致。
+  const nextReviewAt = now.toISOString();
   return extractReviewWords(sentence).map((word) => ({
     word,
     sourceChallengeId: challengeId,
     nextReviewAt,
+    lastAccuracy: accuracy,
+    reviewedCount: 0,
   }));
+}
+
+/** 复习一次后推进 SRS：按新判分重排 nextReviewAt，计数 +1 */
+export function reviewItemAfterPractice(item: ReviewItem, accuracy: number, now = new Date()): ReviewItem {
+  return {
+    ...item,
+    nextReviewAt: nextReviewDate(accuracy, now),
+    lastAccuracy: accuracy,
+    reviewedCount: item.reviewedCount + 1,
+  };
+}
+
+/** 到期的词条（nextReviewAt <= now），按到期时间升序 */
+export function dueReviewItems(items: ReviewItem[], now = new Date()): ReviewItem[] {
+  return items
+    .filter((item) => new Date(item.nextReviewAt) <= now)
+    .sort((a, b) => a.nextReviewAt.localeCompare(b.nextReviewAt));
 }
