@@ -1,0 +1,17 @@
+{
+  "name": "atomic-english",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "playwright-core": "1.55.0",
+    "turbo": "2.11.13",
+    "typescript": "5.9.3"
+  }
+}
