@@ -1,0 +1,6 @@
+# WorkBuddy 本地数据（工作日志、会话记忆），不随仓库共享
+.workbuddy/
+
+# Node / 构建产物
+node_modules/
+dist/
