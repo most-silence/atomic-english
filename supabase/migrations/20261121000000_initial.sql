@@ -8,7 +8,7 @@ create table if not exists public.progress (
   completed_dates text[] not null default '{}',
   today_play_count integer not null default 0,
   free_translations_left integer not null default 6,
-  current_date text not null,
+  active_date text not null,
   updated_at timestamptz not null default now()
 );
 

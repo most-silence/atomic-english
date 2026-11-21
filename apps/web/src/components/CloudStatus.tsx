@@ -86,7 +86,12 @@ export default function CloudStatus() {
           )}
         </>
       ) : (
-        <div className="cloud-row">
+        <div
+          className="cloud-row"
+          data-sync-state={sync.status}
+          data-last-sync={sync.lastSyncAt ?? ''}
+          data-testid="cloud-row"
+        >
           <span className="cloud-email">{auth.email ?? auth.userId.slice(0, 8)}</span>
           <span className={`cloud-dot ${sync.status}`} />
           <span className="cloud-state">

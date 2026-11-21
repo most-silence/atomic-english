@@ -65,13 +65,12 @@ export default function App() {
   useEffect(() => {
     let prevSyncedAt: string | null = null;
     let unsubscribe: () => void = () => {};
-    void initCloud().then(() => {
-      unsubscribe = orchestrator.subscribe((state) => {
-        if (state.lastSyncAt && state.lastSyncAt !== prevSyncedAt) {
-          prevSyncedAt = state.lastSyncAt;
-          setSyncReload((n) => n + 1);
-        }
-      });
+    initCloud();
+    unsubscribe = orchestrator.subscribe((state) => {
+      if (state.lastSyncAt && state.lastSyncAt !== prevSyncedAt) {
+        prevSyncedAt = state.lastSyncAt;
+        setSyncReload((n) => n + 1);
+      }
     });
     return () => unsubscribe();
   }, []);

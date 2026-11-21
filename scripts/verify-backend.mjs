@@ -76,7 +76,7 @@ try {
     completed_dates: [today],
     today_play_count: 3,
     free_translations_left: 4,
-    current_date: today,
+    active_date: today,
     updated_at: new Date().toISOString(),
   });
   check(!progressErr, `progress 写入失败: ${progressErr?.message}`);
@@ -126,7 +126,11 @@ try {
   const { data: bAttempts } = await authB.from('attempts').select('*');
   check(bAttempts?.length === 0, `RLS 失败：B 读到了 A 的作答 ${bAttempts?.length} 条`);
   const { data: bProgress } = await authB.from('progress').select('*');
-  check(bProgress === null, `RLS 失败：B 读到了 A 的进度 ${JSON.stringify(bProgress)}`);
+  // PostgREST 对 maybeSingle 无行时返回 null，对 select 返回空数组——两种都算隔离成功
+  check(
+    bProgress === null || bProgress?.length === 0,
+    `RLS 失败：B 读到了 A 的进度 ${JSON.stringify(bProgress)}`,
+  );
   report.steps.push({ step: 'rls', bAttempts: bAttempts?.length, bProgress });
 
   // ── 6. 幂等：重复插入同一 attempt 应被 unique 约束挡住 ──────

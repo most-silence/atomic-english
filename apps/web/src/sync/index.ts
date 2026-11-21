@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import {
   noopAuthClient,
   noopSyncClient,
+  SupabaseAuthClient,
+  SupabaseSyncClient,
   type AuthClient,
   type AuthStatus,
   type SyncClient,
 } from '@atomic/api-client';
-import { SyncOrchestrator } from '../sync/orchestrator';
+import { SyncOrchestrator } from './orchestrator';
 
 /**
  * 云同步接入点。
@@ -21,9 +23,8 @@ export const configured = Boolean(
 
 export const orchestrator = new SyncOrchestrator();
 
-export async function initCloud(): Promise<void> {
+export function initCloud(): void {
   if (!configured) return;
-  const { SupabaseAuthClient, SupabaseSyncClient } = await import('@atomic/api-client');
   const config = {
     url: import.meta.env.VITE_SUPABASE_URL,
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,

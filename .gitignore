@@ -6,3 +6,11 @@ node_modules/
 dist/
 .turbo/
 *.tsbuildinfo
+
+# 本地凭据（Supabase 本地栈的 publishable key 等），绝不入库
+.env
+.env.local
+.env.*.local
+
+# Supabase 本地栈临时文件
+supabase/.temp/

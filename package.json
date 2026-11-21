@@ -11,7 +11,8 @@
     "icons": "node scripts/check-icons.mjs && node scripts/generate-icons.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
     "verify:pwa": "node scripts/verify-pwa.mjs",
-    "verify:backend": "node scripts/verify-backend.mjs"
+    "verify:backend": "node scripts/verify-backend.mjs",
+    "verify:cloud-ui": "node scripts/verify-cloud-ui.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.119.2",

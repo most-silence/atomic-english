@@ -77,7 +77,7 @@ function rowToProgress(row: Record<string, unknown> | null) {
     completedDates: (row.completed_dates as string[]) ?? [],
     todayPlayCount: (row.today_play_count as number) ?? 0,
     freeTranslationsLeft: (row.free_translations_left as number) ?? 6,
-    currentDate: (row.current_date as string) ?? '',
+    currentDate: (row.active_date as string) ?? '',
   };
 }
 
@@ -133,7 +133,7 @@ export class SupabaseSyncClient implements SyncClient {
         completed_dates: snapshot.progress.completedDates,
         today_play_count: snapshot.progress.todayPlayCount,
         free_translations_left: snapshot.progress.freeTranslationsLeft,
-        current_date: snapshot.progress.currentDate,
+        active_date: snapshot.progress.currentDate,
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
