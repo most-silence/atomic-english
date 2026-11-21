@@ -1,0 +1,19 @@
+{
+  "name": "@atomic/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cap:sync": "cap sync android",
+    "cap:copy": "cap copy android",
+    "android:open": "cap open android",
+    "android:build": "cap sync android && cap build android"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.6.2",
+    "@capacitor/android": "8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  }
+}

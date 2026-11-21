@@ -54,8 +54,8 @@ export default function ReviewPage({
     setInput('');
     setResult(null);
     playWord(item.word);
-    // 自动聚焦输入框，省一次点击
-    setTimeout(() => inputRef.current?.focus(), 0);
+    // 自动聚焦省一次点击；preventScroll 避免 iOS 弹键盘时页面跳动遮挡提交按钮
+    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   };
 
   const submit = () => {

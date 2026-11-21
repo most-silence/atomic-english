@@ -92,6 +92,16 @@ pnpm dev
 
 数据库表与 RLS 在 [`supabase/migrations/`](supabase/migrations/)。部署、持久化、备份细节见 [`docs/deployment.md`](docs/deployment.md)。
 
+## Android 端
+
+Android 端是 Capacitor 壳，复用同一份 Web 构建产物（不另写原生 UI）。构建 APK 详见 [`docs/android.md`](docs/android.md)：
+
+```bash
+pnpm android:build      # build web → cap sync → gradlew assembleDebug
+```
+
+需要 Android SDK（Platform 36 + Build Tools 36）与 JDK 21；产物在 `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`。
+
 ## 架构
 
 <div align="center">
@@ -128,6 +138,7 @@ pnpm verify:pwa         # 阶段二：10 环节 PWA + 音频 spike
 pnpm verify:backend     # 后端：栈可达/注册登录/三表读写/RLS 隔离/幂等
 pnpm verify:cloud-ui    # 云端：注册→答题→自动同步→另一浏览器登录拉回进度
 pnpm verify:persistence # 持久化：临时用户当天缓存/跨天重置 + 注册后跨设备拉回
+pnpm verify:mobile     # 手机浏览器：命中区/溢出/字号/横屏/视口适配
 ```
 
 后三项需要先启动本地 Supabase 栈并填好 `.env.local`。`verify:persistence` 还覆盖「注册后立刻答题」的同步竞态：pull 期间重新读本地快照再合并，避免刚写入的进度被空快照覆盖。端到端脚本都用真实交互而非 DOM 快照断言，并校验零控制台错误。

@@ -4,9 +4,26 @@
   color: #1c1c1e;
   background: #ffffff;
   -webkit-font-smoothing: antialiased;
+  /* iOS 横屏字体自动放大会撑破 grid；明确禁用 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* 键盘弹起时由 useViewportHeight 写入真实视觉视口高度 */
+  --app-height: 100dvh;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  /* 防止应用内滚动带动整页下拉刷新（Android）与橡皮筋（iOS） */
+  overscroll-behavior-y: none;
 }
 
 * { box-sizing: border-box; }
+
+/* 主操作按钮避免被识别成双击缩放；滚动容器保留默认 touch-action */
+button, a, [role='button'] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
 
 body {
   margin: 0;
@@ -14,7 +31,7 @@ body {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: var(--app-height);
   display: flex;
   justify-content: center;
 }
@@ -22,7 +39,7 @@ body {
 .app {
   width: 100%;
   max-width: 480px;
-  min-height: 100vh;
+  min-height: var(--app-height);
   display: flex;
   flex-direction: column;
   background: #ffffff;
@@ -31,7 +48,11 @@ body {
 
 /* 顶部品牌区 */
 .header {
-  padding: 28px 24px 8px;
+  /* viewport-fit=cover 后内容铺进刘海区，用 env 把交互内容拉回安全区 */
+  padding: calc(28px + env(safe-area-inset-top, 0px))
+           calc(24px + env(safe-area-inset-right, 0px))
+           8px
+           calc(24px + env(safe-area-inset-left, 0px));
   text-align: center;
 }
 .brand-logo {
@@ -65,7 +86,10 @@ body {
 /* 页面内容 */
 .page {
   flex: 1;
-  padding: 8px 24px 16px;
+  padding: 8px
+           calc(24px + env(safe-area-inset-right, 0px))
+           16px
+           calc(24px + env(safe-area-inset-left, 0px));
 }
 
 /* 主列表页：周区间 + 两个指标 */
@@ -108,6 +132,7 @@ body {
   border: none;
   border-radius: 999px;
   padding: 11px 15px;
+  min-height: 44px;
   font-size: 15px;
   color: #1c1c1e;
   cursor: pointer;
@@ -151,9 +176,14 @@ body {
   margin-bottom: 26px;
 }
 .play-btn {
-  width: 22px;
-  height: 22px;
+  /* 视觉仍是 22px 三角，但命中区扩到 48dp（负 margin 抵消占位） */
+  width: 48px;
+  height: 48px;
+  margin: -13px;
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: none;
   cursor: pointer;
@@ -271,6 +301,10 @@ body {
 }
 
 .primary-btn {
+  /* 键盘弹起时常驻可见，避免提交按钮落到键盘下需要盲滚 */
+  position: sticky;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
   display: block;
   width: 100%;
   max-width: 360px;
@@ -287,17 +321,25 @@ body {
 
 /* 底部 tab */
 .bottom-nav {
+  /* 常驻底部：长内容/键盘弹起时切 tab 始终可达 */
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid #f2f2f7;
-  padding: 10px 0 18px;
+  padding: 10px env(safe-area-inset-right, 0px)
+           calc(18px + env(safe-area-inset-bottom, 0px))
+           env(safe-area-inset-left, 0px);
   background: #fff;
 }
 .tab {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  min-height: 48px;
   background: none;
   border: none;
   cursor: pointer;
@@ -442,15 +484,17 @@ body {
 
 /* 云同步状态 */
 .cloud-status {
-  padding: 0 24px 8px;
+  padding: 0 calc(24px + env(safe-area-inset-right, 0px)) 8px
+           calc(24px + env(safe-area-inset-left, 0px));
   text-align: center;
 }
 .cloud-btn {
+  min-height: 44px;
+  padding: 5px 16px;
   background: none;
   border: 1px solid #d1d1d6;
   border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: #0a84ff;
   cursor: pointer;
 }
@@ -468,7 +512,11 @@ body {
   border: 1px solid #d1d1d6;
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 14px;
+  /* iOS Safari 下 <16px 输入框聚焦会强制缩放整页且不还原 */
+  font-size: 16px;
+  min-height: 44px;
+  -webkit-appearance: none;
+  appearance: none;
   background: #fff;
 }
 .cloud-actions { display: flex; gap: 8px; justify-content: center; }
@@ -561,4 +609,51 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .track.indeterminate > i { animation: none; width: 100% !important; opacity: 0.4; }
+}
+
+/* ── 手机浏览器适配补丁 ─────────────────────────────── */
+
+/* 安装条 / 云操作等次要按钮的命中区补到 44px */
+.pwa-banner-btn {
+  min-height: 44px;
+  padding: 6px 16px;
+}
+.pwa-banner-close {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.cloud-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+}
+.translate-bar {
+  min-height: 44px;
+  padding: 12px 0;
+}
+.review-replay,
+.review-exit {
+  min-height: 44px;
+}
+
+/* 周区间与右侧指标：小屏/大字体下不挤压、允许换行 */
+.week-row { gap: 8px; flex-wrap: wrap; }
+.week-label { min-width: 0; }
+.week-stats { flex: none; }
+
+/* 横屏矮屏：压缩大字号区块，避免必须滚动才能看到内容 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app { max-width: 100%; }
+  .header { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .brand-logo { font-size: 22px; margin-bottom: 6px; }
+  .brand-title { font-size: 20px; margin-bottom: 6px; }
+  .streak-hero { padding: 12px 0; }
+  .streak-number { font-size: 44px; }
+  .challenge-meta { margin: 8px 0 12px; }
+  .player { margin-bottom: 12px; padding: 8px 12px; }
 }

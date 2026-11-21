@@ -46,6 +46,7 @@ function getTranslationProvider(): TranslationProvider {
   return translationProvider;
 }
 import { initCloud, markDirty, onSignedInFlush, orchestrator } from './sync';
+import { useViewportHeight } from './pwa/useViewportHeight';
 
 interface Session {
   progress: Progress;
@@ -65,6 +66,8 @@ function normalizeDaily(progress: Progress, today: string): Progress {
 }
 
 export default function App() {
+  // 手机浏览器：让布局跟随真实可视高度（地址栏/虚拟键盘收放）
+  useViewportHeight();
   const [tab, setTab] = useState<Tab>('challenge');
   const [session, setSession] = useState<Session | null>(null);
   const [transcript, setTranscript] = useState('');

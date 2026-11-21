@@ -44,7 +44,8 @@ export default function PwaStatus() {
 
   const showUpdate = sw.updateReady;
   const showOffline = !online;
-  const showInstall = !install.installed && !dismissed && (install.canPrompt || install.needsManualSteps);
+  // 离线时优先显示离线提示，不与安装横幅叠加（390px 小屏顶部空间紧张）
+  const showInstall = online && !install.installed && !dismissed && (install.canPrompt || install.needsManualSteps);
 
   // 漏斗埋点：每条状态条只记一次，避免重渲染重复上报
   const shownRef = useRef<Record<string, boolean>>({});

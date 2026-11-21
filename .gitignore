@@ -17,3 +17,8 @@ supabase/.temp/
 
 # Docker 部署的本地环境变量（含后端 key）
 .env.docker
+
+# Android 构建产物（本地出包，不入库）
+*.apk
+*.aab
+artifacts/atomic-english-debug.apk
