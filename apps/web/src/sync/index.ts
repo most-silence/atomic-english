@@ -10,6 +10,7 @@ import {
   type SyncClient,
 } from '@atomic/api-client';
 import { flushEvents, setAnalyticsSink } from '../analytics';
+import { getRuntimeConfig } from '../config';
 import { SyncOrchestrator } from './orchestrator';
 
 /**
@@ -19,17 +20,16 @@ import { SyncOrchestrator } from './orchestrator';
  */
 let authClient: AuthClient = noopAuthClient;
 let syncClient: SyncClient = noopSyncClient;
-export const configured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY,
-);
+const runtimeConfig = getRuntimeConfig();
+export const configured = runtimeConfig !== null;
 
 export const orchestrator = new SyncOrchestrator();
 
 export function initCloud(): void {
-  if (!configured) return;
+  if (!runtimeConfig) return;
   const config = {
-    url: import.meta.env.VITE_SUPABASE_URL,
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    url: runtimeConfig.supabaseUrl,
+    anonKey: runtimeConfig.supabaseAnonKey,
   };
   authClient = new SupabaseAuthClient(config);
   syncClient = new SupabaseSyncClient(config);

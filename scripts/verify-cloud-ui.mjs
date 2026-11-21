@@ -7,7 +7,7 @@
  */
 import { chromium } from 'playwright-core';
 
-const BASE = 'http://127.0.0.1:5173/';
+const BASE = process.env.VERIFY_BASE_URL || 'http://127.0.0.1:5173/';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const stamp = Date.now();
 const email = `ui-${stamp}@example.com`;

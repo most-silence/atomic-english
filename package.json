@@ -12,7 +12,9 @@
     "verify:ui": "node scripts/verify-ui.mjs",
     "verify:pwa": "node scripts/verify-pwa.mjs",
     "verify:backend": "node scripts/verify-backend.mjs",
-    "verify:cloud-ui": "node scripts/verify-cloud-ui.mjs"
+    "verify:cloud-ui": "node scripts/verify-cloud-ui.mjs",
+    "docker:up": "bash scripts/start-docker.sh",
+    "docker:down": "docker compose down"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.119.2",

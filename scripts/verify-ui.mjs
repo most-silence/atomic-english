@@ -1,7 +1,7 @@
 import { chromium } from 'playwright-core';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const URL = 'http://127.0.0.1:5173/';
+const URL = process.env.VERIFY_BASE_URL || 'http://127.0.0.1:5173/';
 const errors = [];
 const fail = [];
 const check = (cond, msg) => { if (!cond) fail.push(msg); };
@@ -44,7 +44,18 @@ check(hit1 === 1 && miss1 === 7, `逐词高亮应 1 中 7 错: ${hit1}/${miss1}`
 
 // ── 步骤 3：翻译扣额度 ────────────────────────────────
 const beforeTranslate = await text('.translate-hint');
-await page.locator('.translate-bar').click();
+// MyMemory 是公共免费 API，偶发超时；失败会显示 .translate-error，重试最多 3 次
+for (let attempt = 0; attempt < 3; attempt++) {
+  await page.locator('.translate-bar').click();
+  try {
+    await Promise.race([
+      page.waitForSelector('.translation', { timeout: 12000 }),
+      page.waitForSelector('[data-testid="translate-error"]', { timeout: 12000 }),
+    ]);
+  } catch { /* 继续重试 */ }
+  if (await page.locator('.translation').count()) break;
+  await page.waitForTimeout(500);
+}
 await page.waitForSelector('.translation');
 const afterTranslate = await text('.translate-hint');
 const translation = await text('.translation');

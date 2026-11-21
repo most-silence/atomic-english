@@ -14,3 +14,6 @@ dist/
 
 # Supabase 本地栈临时文件
 supabase/.temp/
+
+# Docker 部署的本地环境变量（含后端 key）
+.env.docker

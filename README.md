@@ -54,27 +54,43 @@
 
 ## 快速开始
 
+### 方式 A：Docker（推荐，日常使用）
+
+**一条命令拉起全栈**，本机不需要 Node/pnpm 跑服务：
+
 ```bash
-# 环境：Node 22+、pnpm 12（corepack 启用）、Docker（本地后端用）
-corepack enable
 git clone https://github.com/most-silence/atomic-english.git
 cd atomic-english
+bash scripts/start-docker.sh
+```
+
+脚本会依次：启动 Supabase 后端（Docker 容器）→ 读取 Publishable key 写入 `.env.docker` → 构建并启动前端容器。完成后访问：
+
+- 前端：http://localhost:8080
+- 诊断页：http://localhost:8080/?diag=1
+- Supabase Studio：http://localhost:54323
+
+前端镜像把 Supabase 地址与 key 作为**运行时配置**注入（`/config.js`），所以同一个镜像换环境不用重新构建。想改端口或后端地址，编辑 `.env.docker`（复制自 [`.env.docker.example`](.env.docker.example)）后 `docker compose up -d --build`。
+
+### 方式 B：本地开发（改代码时用）
+
+```bash
+# 环境：Node 22+、pnpm 12（corepack 启用）
+corepack enable
 pnpm install
 pnpm dev            # 打开 http://127.0.0.1:5173/
 ```
 
-不配后端也能跑——这就是离线优先的好处：所有学习数据存本地 IndexedDB，登录入口在配置后端后才出现。
-
-### 接入本地后端（可选）
+不配后端也能跑——这就是离线优先的好处：所有学习数据存本地 IndexedDB，登录入口在配置后端后才出现。需要后端时：
 
 ```bash
-pnpm exec supabase start          # 需要 Docker；镜像已缓存则不再下载
+pnpm exec supabase start          # 后端本身就是 Docker；镜像已缓存则不再下载
 cp apps/web/.env.example apps/web/.env.local
 # 把 supabase start 输出的 Publishable key 填进 .env.local
 pnpm dev
 ```
 
-现在可以注册账号，体验答题后自动同步、换浏览器登录拉回进度。数据库表与 RLS 在 [`supabase/migrations/`](supabase/migrations/)。
+数据库表与 RLS 在 [`supabase/migrations/`](supabase/migrations/)。部署、持久化、备份细节见 [`docs/deployment.md`](docs/deployment.md)。
 
 ## 架构
 
