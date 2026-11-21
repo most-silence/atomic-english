@@ -26,6 +26,7 @@ multi-context. See `docs/agents/domain.md`.
 - `packages/*` — 多端共享的领域逻辑、判分引擎、UI 组件、API client
 - `docs/research/` — 调研报告（一个主题一份 Markdown）；`docs/adr/` — 架构决策（懒创建）
 - `docs/agents/` — 技能套件配置，可人工编辑
+- `scripts/` — 构建期工具与验证脚本：`generate-icons.mjs` / `check-icons.mjs`（图标生成与几何自检）、`verify-ui.mjs`（阶段一 9 环节全流程）、`verify-pwa.mjs`（阶段二 PWA + 音频 spike 9 环节）
 - 截图等分析素材：优先作 GitHub issue 附件；确需入库放 `docs/assets/<主题>/`
 
-管理规则：产品端与官网的 issue 一律带 `area:web` / `area:website` / `area:mobile` / `area:desktop` / `area:backend` / `area:shared` 标签，官网需求也照常走 triage 状态机；两者只有发布节奏不同（官网随时可上，产品端走完整测试），用里程碑区分版本目标。应用代码布局以 `docs/research/framework-selection.md` 的选型结论为准。
+管理规则：产品端与官网的 issue 一律带 `area:web` / `area:website` / `area:mobile` / `area:desktop` / `area:backend` / `area:shared` 标签，官网需求也照常走 triage 状态机；两者只有发布节奏不同（官网随时可上，产品端走完整测试），用里程碑区分版本目标。应用代码布局以 `docs/research/framework-selection.md` 的选型结论为准；阶段二 PWA/音频的实现边界与未决真机项见 `docs/research/pwa-audio-spike.md`。改动 `apps/web/public/sw.js` 必须同步提升 `VERSION` 常量，否则老客户端缓存不会失效；改动 `packages/audio` 对外接口须保持 `speak()` 签名不变（多端消费方依赖它）。

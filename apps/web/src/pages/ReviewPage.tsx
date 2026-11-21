@@ -1,4 +1,4 @@
-import { speak } from '@atomic/audio';
+import { speak, unlockAudio } from '@atomic/audio';
 import { dueReviewItems, type ReviewItem } from '@atomic/domain';
 import WeekStats from '../components/WeekStats';
 
@@ -30,7 +30,7 @@ export default function ReviewPage({
             type="button"
             className="word-pill"
             key={`${item.sourceChallengeId}:${item.word}`}
-            onClick={() => { speak(item.word, 'en-US'); onPlay(); }}
+            onClick={() => { unlockAudio(); speak(item.word, 'en-US'); onPlay(); }}
           >
             <span>{item.word}</span>
             <span className="play" aria-hidden />

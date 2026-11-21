@@ -28,9 +28,11 @@ import {
 } from '@atomic/db';
 import Header from './components/Header';
 import BottomNav, { type Tab } from './components/BottomNav';
+import PwaStatus from './components/PwaStatus';
 import ChallengePage from './pages/ChallengePage';
 import ReviewPage from './pages/ReviewPage';
 import StreakPage from './pages/StreakPage';
+import DiagnosticsPage from './pages/DiagnosticsPage';
 
 interface Session {
   progress: Progress;
@@ -88,8 +90,25 @@ export default function App() {
     });
   }, []);
 
+  // 阶段二 spike 诊断页：?diag=1，不进主导航，避免污染正常用户路径
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('diag') === '1') {
+    return (
+      <div className="app">
+        <Header />
+        <PwaStatus />
+        <DiagnosticsPage />
+      </div>
+    );
+  }
+
   if (!session) {
-    return <div className="app"><Header /><div className="page" /></div>;
+    return (
+      <div className="app">
+        <Header />
+        <PwaStatus />
+        <div className="page" />
+      </div>
+    );
   }
 
   const { progress, attempts, reviewItems } = session;
@@ -107,6 +126,7 @@ export default function App() {
     return (
       <div className="app">
         <Header />
+        <PwaStatus />
         <div className="page">
           <div className="streak-hero">
             <div className="streak-number">{course.completed}</div>
@@ -201,6 +221,7 @@ export default function App() {
   return (
     <div className="app">
       <Header />
+      <PwaStatus />
       {tab === 'challenge' && (
         <ChallengePage
           key={`${key}-${challenge.id}`}

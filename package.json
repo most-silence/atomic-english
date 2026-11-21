@@ -7,7 +7,10 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "icons": "node scripts/check-icons.mjs && node scripts/generate-icons.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs",
+    "verify:pwa": "node scripts/verify-pwa.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.55.0",
