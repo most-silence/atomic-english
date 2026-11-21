@@ -51,7 +51,9 @@ const translation = await text('.translation');
 report.steps.push({ step: 'translate', before: beforeTranslate, after: afterTranslate, translation });
 check(beforeTranslate === '还剩 6 次免费翻译', `初始翻译额度: ${beforeTranslate}`);
 check(afterTranslate === '还剩 5 次免费翻译', `翻译后额度应减 1: ${afterTranslate}`);
-check(translation === '时隔多年，我又开始冲浪了。', `译文不符: ${translation}`);
+// 真实翻译 API 的措辞不固定，验证「返回了中文译文」而非写死字符串
+check(Boolean(translation && /[\u4e00-\u9fa5]/.test(translation)), `译文应为中文: ${translation}`);
+check(translation !== '时隔多年，我又开始冲浪了。', '译文应来自真实 API 而非 seed 写死文案');
 
 // ── 步骤 4：下一题 → 自动进入 #594 未作答态 ──────────────
 await page.locator('.primary-btn').click();
@@ -71,14 +73,23 @@ report.steps.push({ step: 'review', words, summary: reviewSummary });
 check(words.join(',') === 'after,again,have,off,started,surfing,years', `词条不符: ${words}`);
 check(reviewSummary.includes('共 7'), `复习总数应为 7: ${reviewSummary}`);
 
-// ── 步骤 6：推进复习排期 → 待复习数归零 ──────────────────
-await page.locator('.primary-btn').click();
+// ── 步骤 6：词级听写复习 → 单条判分并推进 SRS ────────────
+// 第一题只命中虚词 I，7 个实词全错，第一个词是 after
+await page.locator('[data-testid="word-pill"]').first().click();
+await page.waitForSelector('[data-testid="review-drill"]');
+// 故意拼错
+await page.locator('[data-testid="review-input"]').fill('aftr');
+await page.locator('[data-testid="review-submit"]').click();
+await page.waitForSelector('[data-testid="review-feedback"]');
+const feedback = await text('.review-wrong');
+check(feedback.includes('after'), `错误反馈应给出正确答案 after: ${feedback}`);
+await page.locator('[data-testid="review-next"]').click();
 await page.waitForTimeout(150);
 const afterPracticeSummary = await text('.review-summary');
-const pillsAfter = await page.locator('.word-pill').count();
-report.steps.push({ step: 'practice', summary: afterPracticeSummary, pills: pillsAfter });
-check(afterPracticeSummary.includes('待复习 0'), `推进后排期应清零: ${afterPracticeSummary}`);
-check(pillsAfter === 0, `到期词条应清空: ${pillsAfter}`);
+const pillsAfter = await page.locator('[data-testid="word-pill"]').count();
+report.steps.push({ step: 'practice', feedback, summary: afterPracticeSummary, pills: pillsAfter });
+check(afterPracticeSummary.includes('待复习 6'), `复习一个词后应剩 6: ${afterPracticeSummary}`);
+check(pillsAfter === 6, `到期词条应剩 6: ${pillsAfter}`);
 
 // ── 步骤 7：刷新页面 → 状态从 IndexedDB 恢复 ─────────────
 await page.reload({ waitUntil: 'networkidle' });
@@ -102,13 +113,20 @@ for (const n of [594, 595, 596, 597, 598, 599]) {
   await page.waitForSelector('.sentence .miss');
   await page.locator('.primary-btn').click();
 }
-await page.waitForSelector('.streak-hero');
-const doneCaption = await text('.streak-caption');
-report.steps.push({ step: 'complete', caption: doneCaption });
-check(doneCaption.includes('已完成 7 道'), `通关态不符: ${doneCaption}`);
+// 题库已扩充到 30 道，做完前 7 道后应自然进入 #600，而不是通关
+await page.waitForSelector('.transcript-input');
+const nextMeta = await text('.challenge-meta');
+report.steps.push({ step: 'complete', meta: nextMeta });
+check(nextMeta.includes('#600'), `做完后应进入 #600: ${nextMeta}`);
 
 // ── 步骤 9：重置 → 回到第一题 ───────────────────────────
-await page.locator('.primary-btn').click();
+// 用诊断入口无法重置（只在通关态有按钮），这里直接清 IndexedDB 后刷新
+await page.evaluate(() => new Promise((resolve) => {
+  const req = indexedDB.deleteDatabase('atomic-english');
+  req.onsuccess = () => resolve();
+  req.onerror = () => resolve();
+}));
+await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.transcript-input');
 const resetMeta = await text('.challenge-meta');
 report.steps.push({ step: 'reset', meta: resetMeta });

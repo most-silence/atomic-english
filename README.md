@@ -10,7 +10,7 @@
 [![Stack](https://img.shields.io/badge/stack-React%2019%20%C2%B7%20Vite%208%20%C2%B7%20TS%205.9-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev)
 [![PWA](https://img.shields.io/badge/PWA-installable%20%26%20offline-5DCAA5?style=flat-square)](docs/research/pwa-audio-spike.md)
 [![Backend](https://img.shields.io/badge/backend-Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-[![Tests](https://img.shields.io/badge/tests-43%20passing-brightgreen?style=flat-square)](scripts)
+[![Tests](https://img.shields.io/badge/tests-50%20passing-brightgreen?style=flat-square)](scripts)
 
 </div>
 
@@ -44,8 +44,8 @@
 
 ## 核心能力
 
-- **每日挑战**：播放英文句子 → 听写 → 逐词高亮判分 → 可选译文（每日 6 次免费额度）
-- **间隔复习**：错词自动生成复习词条，按正确率推进下次复习时间
+- **每日挑战**：30 道日常英语题库，播放 → 听写 → 逐词高亮判分 → 真实翻译 API（每日 6 次额度，成功才扣减）
+- **间隔复习**：只入库答错的实词，词级听写判分后按表现推进 SRS（1/2/4 天）
 - **进度派生**：连续天数、周完成率全部从真实完成日期推导，不存冗余状态
 - **离线可用**：PWA 安装 + Service Worker 应用壳缓存，断网重载照常进入挑战
 - **音频适配**：Web Speech 起步，含 iOS 手势解锁、后台保活、长句切片与 `onend` 看门狗；预录音频走 Cache API
@@ -78,17 +78,13 @@ pnpm dev
 
 ## 架构
 
-```mermaid
-flowchart TB
-    UI[apps/web · React 19] --> DOMAIN[packages/domain · 判分/SRS/合并规则]
-    UI --> AUDIO[packages/audio · 音频适配层]
-    UI --> DB[packages/db · Dexie/IndexedDB]
-    UI --> API[packages/api-client · 后端接口]
-    API --> SUP[Supabase · Auth/Postgres/RLS]
-    UI --> ANAL[analytics · 事件队列]
-    ANAL --> API
-    DOMAIN -.纯函数.-> DB
-```
+<div align="center">
+
+![Atomic Learning 架构总览](docs/assets/architecture/atomic-architecture.webp)
+
+<sub>数据流随 6 个阶段循环高亮；状态与日志为示意。配置见 [`config.json`](docs/assets/architecture/config.json)，重新出图用 `scripts/build-architecture-panel.py`。</sub>
+
+</div>
 
 关键分层：
 
@@ -109,7 +105,7 @@ flowchart TB
 
 ```bash
 pnpm typecheck          # 全包类型检查
-pnpm test               # 43 个单测（domain 28 + audio 15）
+pnpm test               # 50 个单测（domain 36 + audio 14）
 pnpm build              # 生产构建
 pnpm verify:ui          # 阶段一：9 环节全流程（Playwright + 系统 Chrome，390px 视口）
 pnpm verify:pwa         # 阶段二：10 环节 PWA + 音频 spike

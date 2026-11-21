@@ -15,12 +15,6 @@ const DIFFICULTY_LABEL: Record<Challenge['difficulty'], string> = {
   hard: '困难',
 };
 
-function fmtTime(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
 export default function ChallengePage({
   challenge,
   streak,
@@ -28,6 +22,9 @@ export default function ChallengePage({
   initialPlayCount,
   initialScore,
   initialShowTranslation,
+  translationText,
+  translationError,
+  translating,
   freeTranslationsLeft,
   onPlay,
   onSubmit,
@@ -38,9 +35,13 @@ export default function ChallengePage({
   streak: number;
   initialTranscript: string;
   initialPlayCount: number;
-  /** 演示态：截图 B 即已提交状态，首屏直接呈现它 */
+  /** 已提交的判分结果；非 null 时锁定在本题展示判分与译文 */
   initialScore: ScoreResult | null;
   initialShowTranslation: boolean;
+  /** 真实翻译结果（来自 TranslationProvider），不再从 seed 读 */
+  translationText: string;
+  translationError: string;
+  translating: boolean;
   freeTranslationsLeft: number;
   onPlay: () => void;
   onSubmit: (result: ScoreResult, transcript: string, playCount: number) => void;
@@ -52,12 +53,11 @@ export default function ChallengePage({
   const [submitted, setSubmitted] = useState<ScoreResult | null>(initialScore);
   const [showTranslation, setShowTranslation] = useState(initialShowTranslation);
   const [playing, setPlaying] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
   const handleRef = useRef<PlaybackHandle | null>(null);
-  const timerRef = useRef<number | null>(null);
 
-  const totalSec = challenge.audioDurationMs / 1000;
-
+  // Web Speech API 不提供可靠的播放时长/进度事件。
+  // 旧实现用 seed 里写死的 audioDurationMs + Date.now() 假装进度条，那是假的。
+  // 现在改为「播放中」的 indeterminate 动画，诚实地表达状态。
   const play = () => {
     // iOS 上 speak() 必须在用户手势的同步调用栈内；保活音轨也在这里启动。
     const unlocked = unlockAudio();
@@ -70,35 +70,18 @@ export default function ChallengePage({
     const handle = speak(challenge.sentence, 'en-US');
     handleRef.current = handle;
     setPlaying(true);
-    setElapsed(0);
     setPlayCount((n) => {
       const next = n + 1;
       onPlay();
       return next;
     });
 
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    const started = Date.now();
-    timerRef.current = window.setInterval(() => {
-      const e = Math.min(totalSec, (Date.now() - started) / 1000);
-      setElapsed(e);
-      if (e >= totalSec) {
-        if (timerRef.current) window.clearInterval(timerRef.current);
-        timerRef.current = null;
-        setPlaying(false);
-      }
-    }, 100);
-    handle.done.finally(() => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      timerRef.current = null;
-      setElapsed(totalSec);
-      setPlaying(false);
-    });
+    // 播放结束由 TTS 的真实 onend / watchdog 决定，不再用假定时器
+    void handle.done.finally(() => setPlaying(false));
   };
 
   useEffect(() => () => {
     handleRef.current?.stop();
-    if (timerRef.current) window.clearInterval(timerRef.current);
   }, []);
 
   const submit = () => {
@@ -109,7 +92,7 @@ export default function ChallengePage({
   };
 
   const translate = () => {
-    if (showTranslation || freeTranslationsLeft <= 0) return;
+    if (showTranslation || translating || freeTranslationsLeft <= 0) return;
     setShowTranslation(true);
     onTranslate();
   };
@@ -141,8 +124,10 @@ export default function ChallengePage({
         >
           <span className="tri" />
         </button>
-        <time>{fmtTime(elapsed)} / {fmtTime(totalSec)}</time>
-        <span className="track"><i style={{ width: `${(elapsed / totalSec) * 100}%` }} /></span>
+        <time>{playing ? '播放中' : '点击播放'}</time>
+        <span className={`track ${playing ? 'indeterminate' : ''}`}>
+          <i />
+        </span>
       </div>
 
       <div className="metrics">
@@ -152,7 +137,7 @@ export default function ChallengePage({
         </div>
         <div>
           <div className="metric-value">{playCount}</div>
-          <div className="metric-label">播放次数</div>
+          <div className="metric-label">本题播放</div>
         </div>
         <div>
           <div className="metric-value">{submitted ? formatAccuracy(submitted.accuracy) : '—'}</div>
@@ -171,12 +156,18 @@ export default function ChallengePage({
 
       <div className="divider" />
 
-      <button type="button" className="translate-bar" onClick={translate}>
+      <button type="button" className="translate-bar" onClick={translate} data-testid="translate-bar">
         <span aria-hidden>文A</span>
-        <span>简体中文</span>
+        <span>{translating ? '翻译中…' : '简体中文'}</span>
         <span className="caret">⌄</span>
       </button>
-      <p className="translate-hint">还剩 {freeTranslationsLeft} 次免费翻译</p>
+      <p className="translate-hint">
+        {translationError ? (
+          <span className="translate-error" data-testid="translate-error">{translationError}</span>
+        ) : (
+          `还剩 ${freeTranslationsLeft} 次免费翻译`
+        )}
+      </p>
 
       {submitted ? (
         <p className="sentence"><span className="cursor" />{highlighted}</p>
@@ -187,7 +178,9 @@ export default function ChallengePage({
         </p>
       )}
 
-      {showTranslation && <p className="translation">{challenge.translation}</p>}
+      {showTranslation && translationText && (
+        <p className="translation" data-testid="translation">{translationText}</p>
+      )}
 
       <button type="button" className="primary-btn" onClick={submit}>
         {submitted ? '下一题' : '提交'}

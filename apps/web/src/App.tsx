@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  buildReviewItems,
+  buildWrongWordReviewItems,
   courseProgress,
   currentChallenge,
   currentStreak,
@@ -34,6 +34,14 @@ import ReviewPage from './pages/ReviewPage';
 import StreakPage from './pages/StreakPage';
 import DiagnosticsPage from './pages/DiagnosticsPage';
 import CloudStatus from './components/CloudStatus';
+import { MyMemoryTranslationProvider, type TranslationProvider } from '@atomic/api-client';
+import { track } from './analytics';
+
+// 翻译提供方单例：缓存命中不消耗额度，换实现只改这一处
+const translationProvider: TranslationProvider = new MyMemoryTranslationProvider();
+function getTranslationProvider(): TranslationProvider {
+  return translationProvider;
+}
 import { initCloud, markDirty, onSignedInFlush, orchestrator } from './sync';
 
 interface Session {
@@ -55,6 +63,10 @@ export default function App() {
   const [playCount, setPlayCount] = useState(0);
   const [submitted, setSubmitted] = useState<ScoreResult | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
+  // 真实翻译结果（来自 TranslationProvider），不再是 seed 里的写死文案
+  const [translationText, setTranslationText] = useState('');
+  const [translationError, setTranslationError] = useState('');
+  const [translating, setTranslating] = useState(false);
   const [key, setKey] = useState(0);
   // 提交最后一题后仍要展示判分，等用户确认才进通关页
   const [lastChallenge, setLastChallenge] = useState<typeof SEED_CHALLENGES[number] | null>(null);
@@ -183,6 +195,8 @@ export default function App() {
               setSubmitted(null);
               setLastChallenge(null);
               setShowTranslation(false);
+              setTranslationText('');
+              setTranslationError('');
               setKey((n) => n + 1);
             }}
           >
@@ -213,7 +227,12 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
     void saveAttempt(attempt);
-    const newItems = buildReviewItems(challenge.id, challenge.sentence, result.accuracy);
+    // 只入库词级判分没命中的实词；matched 与 result.targetTokens 一一对应
+    const newItems = buildWrongWordReviewItems(
+      challenge.id,
+      challenge.sentence,
+      result.matched,
+    );
     void saveReviewItems(newItems);
     markDirty();
     updateSession((s) => ({
@@ -226,19 +245,38 @@ export default function App() {
     }));
   };
 
-  const handleTranslate = () => {
-    updateSession((s) => ({
-      progress: {
-        ...s.progress,
-        freeTranslationsLeft: Math.max(0, s.progress.freeTranslationsLeft - 1),
-      },
-    }));
+  /** 真实翻译：成功才扣额度；失败给明确提示，不白扣 */
+  const handleTranslate = async () => {
+    if (translationText || translating) return;
+    setTranslating(true);
+    setTranslationError('');
+    try {
+      const text = await getTranslationProvider().translate(challenge.sentence);
+      setTranslationText(text);
+      setShowTranslation(true);
+      // 只在翻译成功后扣减——额度对应一次真实请求
+      updateSession((s) => ({
+        progress: {
+          ...s.progress,
+          freeTranslationsLeft: Math.max(0, s.progress.freeTranslationsLeft - 1),
+        },
+      }));
+      void track('translation_success', { challengeId: challenge.id });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setTranslationError(message);
+      void track('translation_failed', { challengeId: challenge.id, reason: message });
+    } finally {
+      setTranslating(false);
+    }
   };
 
   const handleNext = () => {
     setSubmitted(null);
     setLastChallenge(null);
     setShowTranslation(false);
+    setTranslationText('');
+    setTranslationError('');
     setTranscript('');
     setPlayCount(0);
     setKey((n) => n + 1);
@@ -269,15 +307,23 @@ export default function App() {
           initialPlayCount={playCount}
           initialScore={submitted}
           initialShowTranslation={showTranslation}
+          translationText={translationText}
+          translationError={translationError}
+          translating={translating}
           freeTranslationsLeft={progress.freeTranslationsLeft}
           onPlay={bumpPlayCount}
           onSubmit={handleSubmit}
-          onTranslate={handleTranslate}
+          onTranslate={() => { void handleTranslate(); }}
           onNext={handleNext}
         />
       )}
       {tab === 'streak' && (
-        <StreakPage streak={streak} completion={completion} />
+        <StreakPage
+          streak={streak}
+          completion={completion}
+          currentChallengeId={nextChallenge?.id ?? null}
+          totalChallenges={SEED_CHALLENGES.length}
+        />
       )}
       {tab === 'review' && (
         <ReviewPage

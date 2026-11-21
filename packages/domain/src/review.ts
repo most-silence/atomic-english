@@ -13,8 +13,16 @@ const STOP_WORDS = new Set([
   'and', 'or', 'but', 'if', 'so', 'to', 'of', 'in', 'on', 'at', 'for', 'with', 'from', 'by',
 ]);
 
-import { tokenize } from './scoring.js';
+import { scoreTranscript, tokenize } from './scoring.js';
 import type { ReviewItem } from './types.js';
+
+/** 单个词听写判分：复用整句判分引擎，目标是单词时 accuracy 非 1 即 0 */
+export function scoreWord(input: string, word: string): number {
+  const tokens = tokenize(word);
+  if (!tokens.length) return 0;
+  const result = scoreTranscript(input, word);
+  return result.accuracy;
+}
 
 /** 从挑战句中抽取复习词条（小写、去重、过滤虚词） */
 export function extractReviewWords(sentence: string): string[] {
@@ -71,4 +79,41 @@ export function dueReviewItems(items: ReviewItem[], now = new Date()): ReviewIte
   return items
     .filter((item) => new Date(item.nextReviewAt) <= now)
     .sort((a, b) => a.nextReviewAt.localeCompare(b.nextReviewAt));
+}
+
+/**
+ * 从判分结果构建**真正的错词本**：只入库用户没命中的实词。
+ *
+ * 与 buildReviewItems（历史遗留，入库全部实词）的区别：
+ * - matched[i] === false 的词才入库——答对的词不该反复占用复习时间
+ * - lastAccuracy 用 0（词级错误），不是整句正确率
+ *
+ * matched 与 targetTokens 一一对应（见 scoring.ts），而 tokenize(sentence)
+ * 与 displayTokens(sentence) 同序，所以可以按索引取词。
+ */
+export function buildWrongWordReviewItems(
+  challengeId: number,
+  sentence: string,
+  matched: boolean[],
+  now: Date = new Date(),
+): ReviewItem[] {
+  const words = tokenize(sentence);
+  const seen = new Set<string>();
+  const items: ReviewItem[] = [];
+
+  words.forEach((word, index) => {
+    if (STOP_WORDS.has(word) || seen.has(word)) return;
+    if (matched[index] !== false) return; // 命中或越界都不入库
+    seen.add(word);
+    items.push({
+      word,
+      sourceChallengeId: challengeId,
+      // 新错词立即到期，打开复习页就能练
+      nextReviewAt: now.toISOString(),
+      lastAccuracy: 0,
+      reviewedCount: 0,
+    });
+  });
+
+  return items.sort((a, b) => a.word.localeCompare(b.word));
 }

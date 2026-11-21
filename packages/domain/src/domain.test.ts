@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scoreTranscript, formatAccuracy } from './scoring.js';
-import { extractReviewWords, buildReviewItems, reviewItemAfterPractice, dueReviewItems } from './review.js';
+import { extractReviewWords, buildReviewItems, buildWrongWordReviewItems, reviewItemAfterPractice, dueReviewItems, scoreWord } from './review.js';
 import { weeklyCompletion, currentStreak, markCompleted, formatWeekRange } from './progress.js';
 import { currentChallenge, nextChallenge, courseProgress } from './course.js';
 import { SEED_CHALLENGES } from './seed.js';
@@ -95,11 +95,66 @@ describe('课程取题', () => {
   it('全部答完后无当前题，课程完成度 100%', () => {
     const all = SEED_CHALLENGES.map((c) => ({ challengeId: c.id }));
     expect(currentChallenge(SEED_CHALLENGES, all)).toBeUndefined();
-    expect(courseProgress(SEED_CHALLENGES, all)).toEqual({ completed: 7, total: 7, ratio: 1 });
+    const total = SEED_CHALLENGES.length;
+    expect(courseProgress(SEED_CHALLENGES, all)).toEqual({ completed: total, total, ratio: 1 });
   });
 
   it('课程进行中完成度正确', () => {
+    const total = SEED_CHALLENGES.length;
     expect(courseProgress(SEED_CHALLENGES, [{ challengeId: 593 }, { challengeId: 594 }]))
-      .toEqual({ completed: 2, total: 7, ratio: 2 / 7 });
+      .toEqual({ completed: 2, total, ratio: 2 / total });
+  });
+});
+
+describe('词级错词本（buildWrongWordReviewItems）', () => {
+  const NOW = new Date('2026-11-21T00:00:00Z');
+
+  it('只入库未命中的实词，答对的不入库', () => {
+    // SENTENCE: I have started surfing again after years off.
+    // 命中 I / have / started，未命中 surfing / again / after / years / off
+    const matched = [true, true, true, false, false, false, false, false];
+    const items = buildWrongWordReviewItems(593, SENTENCE, matched, NOW);
+    expect(items.map((i) => i.word)).toEqual(['after', 'again', 'off', 'surfing', 'years']);
+  });
+
+  it('虚词即使没命中也不入库', () => {
+    // 全部未命中，但 I 是虚词应被过滤
+    const items = buildWrongWordReviewItems(593, SENTENCE, new Array(8).fill(false), NOW);
+    expect(items.map((i) => i.word)).toEqual([
+      'after', 'again', 'have', 'off', 'started', 'surfing', 'years',
+    ]);
+    expect(items.every((i) => i.word !== 'i')).toBe(true);
+  });
+
+  it('新错词立即到期，词级 accuracy 记为 0', () => {
+    const items = buildWrongWordReviewItems(593, SENTENCE, new Array(8).fill(false), NOW);
+    expect(items[0].nextReviewAt).toBe(NOW.toISOString());
+    expect(items.every((i) => i.lastAccuracy === 0)).toBe(true);
+    expect(items.every((i) => i.reviewedCount === 0)).toBe(true);
+  });
+
+  it('全命中时不产生复习词条', () => {
+    const items = buildWrongWordReviewItems(593, SENTENCE, new Array(8).fill(true), NOW);
+    expect(items).toEqual([]);
+  });
+
+  it('重复错词只入库一次', () => {
+    const items = buildWrongWordReviewItems(1, 'off off off', [false, false, false], NOW);
+    expect(items).toHaveLength(1);
+    expect(items[0].word).toBe('off');
+  });
+});
+
+describe('词级判分 scoreWord', () => {
+  it('拼写正确得 1', () => {
+    expect(scoreWord('surfing', 'surfing')).toBe(1);
+  });
+
+  it('形态错误得 0（不做词干归一，与整句规则一致）', () => {
+    expect(scoreWord('surf', 'surfing')).toBe(0);
+  });
+
+  it('大小写不敏感', () => {
+    expect(scoreWord('SURFING', 'surfing')).toBe(1);
   });
 });

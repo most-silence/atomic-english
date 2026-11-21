@@ -16,14 +16,26 @@ export interface SupabaseConfig {
   anonKey: string;
 }
 
+/**
+ * 共享同一个 SupabaseClient。
+ * supabase-js 每个实例都会创建一个 GoTrueClient 并注册 auth 监听器，
+ * 多个实例会导致 "Multiple GoTrueClient instances" 警告与 token 刷新竞争。
+ */
+const clientCache = new Map<string, SupabaseClient>();
+
 function makeClient(config: SupabaseConfig): SupabaseClient {
-  return createClient(config.url, config.anonKey, {
+  const key = `${config.url}|${config.anonKey}`;
+  const cached = clientCache.get(key);
+  if (cached) return cached;
+  const client = createClient(config.url, config.anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
   });
+  clientCache.set(key, client);
+  return client;
 }
 
 /** 把 supabase 用户转成与后端无关的身份 */

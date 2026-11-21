@@ -1,5 +1,6 @@
 export * from './sync.js';
 export * from './supabase.js';
+export * from './translation.js';
 
 import type { AnalyticsEvent } from '@atomic/db';
 
