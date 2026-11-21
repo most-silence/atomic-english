@@ -14,7 +14,8 @@
     "react-dom": "19.3.1",
     "@atomic/domain": "workspace:*",
     "@atomic/db": "workspace:*",
-    "@atomic/audio": "workspace:*"
+    "@atomic/audio": "workspace:*",
+    "@atomic/api-client": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.7",

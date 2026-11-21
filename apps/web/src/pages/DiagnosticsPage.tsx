@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { countEvents, loadEvents, type AnalyticsEvent } from '@atomic/db';
 import {
   clearAudioCache,
   countCachedAudio,
@@ -10,6 +11,7 @@ import {
   unlockAudio,
   type AudioCapabilities,
 } from '@atomic/audio';
+import { track } from '../analytics';
 import { useInstallPrompt } from '../pwa/useInstallPrompt';
 import { useServiceWorker } from '../pwa/useServiceWorker';
 import { useOnline } from '../pwa/useOnline';
@@ -39,6 +41,7 @@ declare global {
       audioCacheEntries: number;
       unlockResult: unknown;
       lastPlayback: { outcome: string; elapsedMs: number } | null;
+      analytics: { total: number; events: AnalyticsEvent[] };
     };
   }
 }
@@ -55,6 +58,14 @@ export default function DiagnosticsPage() {
     null,
   );
   const [keepAlive, setKeepAlive] = useState(isKeepAliveActive());
+  const [analytics, setAnalytics] = useState<{ total: number; events: AnalyticsEvent[] }>({
+    total: 0,
+    events: [],
+  });
+
+  const refreshAnalytics = useCallback(async () => {
+    setAnalytics({ total: await countEvents(), events: await loadEvents(10) });
+  }, []);
 
   const log = useCallback((text: string) => {
     const at = new Date().toLocaleTimeString('zh-CN', { hour12: false });
@@ -64,7 +75,8 @@ export default function DiagnosticsPage() {
   useEffect(() => {
     setCaps(getAudioCapabilities());
     void countCachedAudio().then(setCacheCount);
-  }, []);
+    void refreshAnalytics();
+  }, [refreshAnalytics]);
 
   // 暴露给自动化验证
   useEffect(() => {
@@ -74,14 +86,21 @@ export default function DiagnosticsPage() {
       audioCacheEntries: cacheCount,
       unlockResult,
       lastPlayback,
+      analytics,
     };
-  }, [caps, logs, cacheCount, unlockResult, lastPlayback]);
+  }, [caps, logs, cacheCount, unlockResult, lastPlayback, analytics]);
 
   const runUnlock = () => {
     const result = unlockAudio();
     const text = `speech=${result.speechStarted} keepAlive=${result.keepAliveStarted}`;
     setUnlockResult(text);
     setKeepAlive(isKeepAliveActive());
+    void track('audio_unlock', {
+      speechStarted: result.speechStarted,
+      keepAliveStarted: result.keepAliveStarted,
+      source: 'diagnostics',
+    });
+    void refreshAnalytics();
     log(`解锁音频会话：${text}`);
   };
 
@@ -131,6 +150,12 @@ export default function DiagnosticsPage() {
     const ok = startKeepAlive();
     setKeepAlive(isKeepAliveActive());
     log(`保活音轨：${ok ? '已启动' : '启动失败'}`);
+  };
+
+  const runAnalyticsSelfTest = async () => {
+    await track('diag_selftest', { source: 'diagnostics' });
+    await refreshAnalytics();
+    log(`埋点自检：已写入事件，当前总数 ${await countEvents()}`);
   };
 
   const voices = caps?.voices ?? [];
@@ -209,7 +234,24 @@ export default function DiagnosticsPage() {
           <button type="button" className="diag-btn" onClick={runClearCache} data-testid="diag-clear-cache">
             清空音频缓存
           </button>
+          <button type="button" className="diag-btn" onClick={runAnalyticsSelfTest} data-testid="diag-analytics">
+            埋点自检
+            <small>写入一条事件到本地队列并刷新统计（当前 {analytics.total} 条）</small>
+          </button>
         </div>
+      </section>
+
+      <section className="diag-section">
+        <div className="diag-title">埋点事件（最近 10 条）</div>
+        <Row k="事件总数" v={String(analytics.total)} level={analytics.total > 0 ? 'ok' : 'warn'} />
+        {analytics.events.map((e) => (
+          <Row
+            key={e.id}
+            k={e.name}
+            v={`${e.createdAt.slice(11, 19)}${e.flushedAt ? ' · 已上报' : ' · 待上报'}`}
+            level={e.flushedAt ? 'ok' : 'warn'}
+          />
+        ))}
       </section>
 
       <section className="diag-section">

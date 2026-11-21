@@ -7,6 +7,7 @@ import {
   type ScoreResult,
 } from '@atomic/domain';
 import { speak, unlockAudio, type PlaybackHandle } from '@atomic/audio';
+import { track } from '../analytics';
 
 const DIFFICULTY_LABEL: Record<Challenge['difficulty'], string> = {
   easy: '简单',
@@ -59,7 +60,12 @@ export default function ChallengePage({
 
   const play = () => {
     // iOS 上 speak() 必须在用户手势的同步调用栈内；保活音轨也在这里启动。
-    unlockAudio();
+    const unlocked = unlockAudio();
+    void track('audio_unlock', {
+      speechStarted: unlocked.speechStarted,
+      keepAliveStarted: unlocked.keepAliveStarted,
+      challengeId: challenge.id,
+    });
     handleRef.current?.stop();
     const handle = speak(challenge.sentence, 'en-US');
     handleRef.current = handle;

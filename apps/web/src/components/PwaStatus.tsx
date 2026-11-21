@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { track } from '../analytics';
 import { useInstallPrompt } from '../pwa/useInstallPrompt';
 import { useServiceWorker } from '../pwa/useServiceWorker';
 import { useOnline } from '../pwa/useOnline';
@@ -44,6 +45,21 @@ export default function PwaStatus() {
   const showUpdate = sw.updateReady;
   const showOffline = !online;
   const showInstall = !install.installed && !dismissed && (install.canPrompt || install.needsManualSteps);
+
+  // 漏斗埋点：每条状态条只记一次，避免重渲染重复上报
+  const shownRef = useRef<Record<string, boolean>>({});
+  useEffect(() => {
+    for (const [key, visible] of [
+      ['install_banner_shown', showInstall],
+      ['pwa_offline_shown', showOffline],
+      ['sw_update_shown', showUpdate],
+    ] as const) {
+      if (visible && !shownRef.current[key]) {
+        shownRef.current[key] = true;
+        void track(key, { platform: install.platform });
+      }
+    }
+  }, [showInstall, showOffline, showUpdate, install.platform]);
 
   if (!showUpdate && !showOffline && !showInstall) return null;
 

@@ -187,6 +187,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@atomic/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@atomic/audio':
         specifier: workspace:*
         version: link:../../packages/audio
@@ -220,6 +223,10 @@ importers:
         version: 8.3.8
 
   packages/api-client:
+    dependencies:
+      '@atomic/db':
+        specifier: workspace:*
+        version: link:../db
     devDependencies:
       typescript:
         specifier: 5.9.3

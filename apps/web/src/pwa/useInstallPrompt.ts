@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { track } from '../analytics';
 import { detectPlatform, isIOS, isSafari, isStandalone, supportsInstallPrompt } from './platform';
 
 /**
@@ -37,10 +38,12 @@ export function useInstallPrompt() {
       // 阻止浏览器自带的迷你横幅，改由我们自己决定何时提示
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
+      void track('install_prompt_shown', { platform: detectPlatform() });
     };
     const onInstalled = () => {
       setInstalled(true);
       setDeferred(null);
+      void track('app_installed', { platform: detectPlatform() });
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
@@ -57,9 +60,14 @@ export function useInstallPrompt() {
       const choice = await deferred.userChoice;
       // 事件只能消费一次
       setDeferred(null);
-      return choice.outcome === 'accepted' ? 'accepted' : 'dismissed';
+      const outcome: InstallOutcome = choice.outcome === 'accepted' ? 'accepted' : 'dismissed';
+      void track(outcome === 'accepted' ? 'install_accepted' : 'install_dismissed', {
+        platform: detectPlatform(),
+      });
+      return outcome;
     } catch {
       setDeferred(null);
+      void track('install_unavailable', { platform: detectPlatform() });
       return 'unavailable';
     }
   }, [deferred]);

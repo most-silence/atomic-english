@@ -193,7 +193,27 @@ try {
   check(['ended', 'watchdog', 'error'].includes(playback.outcome), `结束原因异常: ${playback.outcome}`);
   check(playback.elapsedMs > 0, '发音耗时应大于 0');
 
-  // ── 9. 正常流程未被 PWA 改动破坏 ─────────────────────────
+  // ── 9. 埋点队列 ──────────────────────────────────────────
+  await page.locator('[data-testid="diag-analytics"]').click();
+  await page.waitForFunction(() =>
+    window.__atomicDiag?.analytics?.events.some((e) => e.name === 'diag_selftest'),
+  );
+  const analytics = await page.evaluate(() => window.__atomicDiag.analytics);
+  report.steps.push({
+    step: 'analytics',
+    total: analytics.total,
+    names: analytics.events.map((e) => e.name),
+  });
+  check(
+    analytics.events.some((e) => e.name === 'diag_selftest'),
+    '埋点自检事件应写入本地队列',
+  );
+  check(
+    analytics.events.some((e) => e.name === 'audio_unlock'),
+    '音频解锁事件应被记录',
+  );
+
+  // ── 10. 正常流程未被 PWA 改动破坏 ────────────────────────
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.transcript-input');
   const meta = await page.locator('.challenge-meta').first().textContent();
@@ -212,4 +232,4 @@ if (fail.length) {
   console.error('\n验证失败:\n- ' + fail.join('\n- '));
   process.exit(1);
 }
-console.log('\nPWA + 音频 spike 验证通过：9 个环节全绿');
+console.log('\nPWA + 音频 spike 验证通过：10 个环节全绿');
