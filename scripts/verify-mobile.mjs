@@ -57,8 +57,18 @@ try {
   check(overflow.docWidth <= overflow.viewWidth + 1, `不应横向溢出: scrollWidth=${overflow.docWidth} > ${overflow.viewWidth}`);
   report.steps.push({ step: 'overflow', ...overflow });
 
-  // 3. 核心按钮命中区
-  const hitTargets = await page.evaluate(() => {
+  // 3. 核心按钮命中区（登录卡已移到复习 tab，先切过去测 cloudBtn）
+  await page.locator('.tab').nth(2).click();
+  await page.waitForSelector('[data-testid="cloud-status"]');
+  const cloudBtnSize = await page.evaluate(() => {
+    const el = document.querySelector('.cloud-btn');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  await page.locator('.tab').nth(0).click();
+  await page.waitForSelector('.transcript-input');
+  const hitTargets = await page.evaluate((cloudBtnSize) => {
     const pick = (sel) => {
       const el = document.querySelector(sel);
       if (!el) return null;
@@ -69,9 +79,9 @@ try {
       play: pick('.play-btn'),
       tab: pick('.tab'),
       primary: pick('.primary-btn'),
-      cloudBtn: pick('.cloud-btn'),
+      cloudBtn: cloudBtnSize,
     };
-  });
+  }, cloudBtnSize);
   for (const [name, size] of Object.entries(hitTargets)) {
     check(size && size.w >= 44 && size.h >= 44, `${name} 命中区应 ≥44×44: ${JSON.stringify(size)}`);
   }

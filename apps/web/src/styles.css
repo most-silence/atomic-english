@@ -482,32 +482,37 @@ body {
   overflow-y: auto;
 }
 
-/* 云同步状态 */
-.cloud-status {
-  padding: 0 calc(24px + env(safe-area-inset-right, 0px)) 8px
-           calc(24px + env(safe-area-inset-left, 0px));
-  text-align: center;
+/* 云同步登录卡（嵌在复习页顶部，与词汇同屏） */
+.cloud-card {
+  margin: 4px 0 18px;
+  padding: 16px;
+  background: #f2f2f7;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cloud-card-offline { background: #fff4e5; }
+.cloud-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c1c1e;
 }
 .cloud-btn {
   min-height: 44px;
+  flex: 1;
   padding: 5px 16px;
-  background: none;
+  background: #fff;
   border: 1px solid #d1d1d6;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   color: #0a84ff;
   cursor: pointer;
 }
+.cloud-btn.primary { background: #0a84ff; color: #fff; border-color: #0a84ff; }
 .cloud-btn:disabled { opacity: 0.5; }
-.cloud-panel {
-  margin-top: 8px;
-  padding: 12px;
-  background: #f2f2f7;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 .cloud-input {
   border: 1px solid #d1d1d6;
   border-radius: 8px;
@@ -518,10 +523,12 @@ body {
   -webkit-appearance: none;
   appearance: none;
   background: #fff;
+  width: 100%;
 }
-.cloud-actions { display: flex; gap: 8px; justify-content: center; }
+.cloud-actions { display: flex; gap: 10px; justify-content: center; }
 .cloud-hint { font-size: 11px; color: #8e8e93; margin: 0; }
-.cloud-error { font-size: 12px; color: #ff3b30; margin: 4px 0 0; }
+.cloud-info { font-size: 12px; color: #0a84ff; margin: 0; }
+.cloud-error { font-size: 12px; color: #ff3b30; margin: 0; word-break: break-word; }
 .cloud-row {
   display: flex;
   align-items: center;

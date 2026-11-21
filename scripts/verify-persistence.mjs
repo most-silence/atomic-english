@@ -26,7 +26,9 @@ function watch(page) {
 }
 
 async function signUp(page) {
-  await page.locator('.cloud-btn').filter({ hasText: '登录以同步进度' }).click();
+  // 登录卡已移到最右「复习」tab，与词汇同屏
+  await page.locator('.tab').nth(2).click();
+  await page.waitForSelector('[data-testid="cloud-status"]');
   await page.locator('input[type=email]').fill(email);
   await page.locator('input[type=password]').fill(pw);
   await page.getByRole('button', { name: '注册', exact: true }).click();
@@ -41,8 +43,12 @@ try {
   await p1.goto(BASE, { waitUntil: 'domcontentloaded' });
   await p1.waitForSelector('.transcript-input');
 
-  // 确认未登录
-  check(await p1.locator('.cloud-btn').filter({ hasText: '登录以同步进度' }).count() === 1, 'T1 应为未登录临时态');
+  // 确认未登录：复习页应显示注册按钮
+  await p1.locator('.tab').nth(2).click();
+  await p1.waitForSelector('[data-testid="cloud-status"]');
+  check(await p1.getByRole('button', { name: '注册', exact: true }).count() === 1, 'T1 应为未登录临时态');
+  await p1.locator('.tab').nth(0).click();
+  await p1.waitForSelector('.transcript-input');
 
   // 答题：提交第一题
   await p1.locator('.transcript-input').fill('I start');
@@ -128,6 +134,8 @@ try {
   await p2.goto(BASE, { waitUntil: 'domcontentloaded' });
   await p2.waitForSelector('.transcript-input');
   await signUp(p2);
+  await p2.locator('.tab').nth(0).click();
+  await p2.waitForSelector('.transcript-input');
   // 答两题
   for (const input of ['I start', 'she read']) {
     await p2.locator('.transcript-input').fill(input);
@@ -159,8 +167,9 @@ try {
   // 确认是干净状态（#593）
   const metaClean = await p3.locator('.challenge-meta').first().textContent();
   check(metaClean?.includes('#593'), `T2 新设备应初始为 #593: ${metaClean}`);
-  // 登录
-  await p3.locator('.cloud-btn').filter({ hasText: '登录以同步进度' }).click();
+  // 登录（登录卡在复习 tab）
+  await p3.locator('.tab').nth(2).click();
+  await p3.waitForSelector('[data-testid="cloud-status"]');
   await p3.locator('input[type=email]').fill(email);
   await p3.locator('input[type=password]').fill(pw);
   await p3.getByRole('button', { name: '登录', exact: true }).click();

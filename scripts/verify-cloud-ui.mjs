@@ -26,13 +26,15 @@ try {
   pageA.on('pageerror', (e) => consoleErrors.push(String(e)));
 
   await pageA.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await pageA.waitForSelector('.transcript-input');
+  // 登录卡已移到最右「复习」tab，与词汇同屏
+  await pageA.locator('.tab').nth(2).click();
   await pageA.waitForSelector('[data-testid="cloud-status"]');
   const cloudVisible = await pageA.locator('[data-testid="cloud-status"]').count();
   check(cloudVisible === 1, '配置了 Supabase 后应显示云同步入口');
   report.steps.push({ step: 'cloud-ui-visible', visible: cloudVisible });
 
   // ── 1. A 注册 ────────────────────────────────────────────
-  await pageA.locator('.cloud-btn').first().click();
   await pageA.locator('.cloud-input[type="email"]').fill(email);
   await pageA.locator('.cloud-input[type="password"]').fill(pw);
   await pageA.getByRole('button', { name: '注册' }).click();
@@ -42,6 +44,7 @@ try {
   report.steps.push({ step: 'signup', email: signedIn });
 
   // ── 2. A 答题（等自动同步）─────────────────────────────────
+  await pageA.locator('.tab').nth(0).click();
   await pageA.waitForSelector('.transcript-input');
   await pageA.locator('.transcript-input').fill('I start');
   await pageA.locator('.primary-btn').first().click();
@@ -66,8 +69,9 @@ try {
   pageB.on('pageerror', (e) => consoleErrors.push(String(e)));
 
   await pageB.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await pageB.waitForSelector('.transcript-input');
+  await pageB.locator('.tab').nth(2).click();
   await pageB.waitForSelector('[data-testid="cloud-status"]');
-  await pageB.locator('.cloud-btn').first().click();
   await pageB.locator('.cloud-input[type="email"]').fill(email);
   await pageB.locator('.cloud-input[type="password"]').fill(pw);
   await pageB.getByRole('button', { name: '登录', exact: true }).click();

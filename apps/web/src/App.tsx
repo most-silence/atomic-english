@@ -36,7 +36,6 @@ import ChallengePage from './pages/ChallengePage';
 import ReviewPage from './pages/ReviewPage';
 import StreakPage from './pages/StreakPage';
 import DiagnosticsPage from './pages/DiagnosticsPage';
-import CloudStatus from './components/CloudStatus';
 import { MyMemoryTranslationProvider, type TranslationProvider } from '@atomic/api-client';
 import { track } from './analytics';
 
@@ -153,7 +152,6 @@ export default function App() {
       <div className="app">
         <Header />
         <PwaStatus />
-        <CloudStatus />
         <DiagnosticsPage />
       </div>
     );
@@ -164,7 +162,6 @@ export default function App() {
       <div className="app">
         <Header />
         <PwaStatus />
-        <CloudStatus />
         <div className="page" />
       </div>
     );
@@ -186,7 +183,6 @@ export default function App() {
       <div className="app">
         <Header />
         <PwaStatus />
-        <CloudStatus />
         <div className="page">
           <div className="streak-hero">
             <div className="streak-number">{course.completed}</div>
@@ -311,7 +307,6 @@ export default function App() {
     <div className="app">
       <Header />
       <PwaStatus />
-      <CloudStatus />
       {tab === 'challenge' && (
         <ChallengePage
           key={`${key}-${challenge.id}`}

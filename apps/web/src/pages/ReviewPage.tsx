@@ -3,6 +3,7 @@ import { scoreWord, srsTierFor, dueReviewItems, type ReviewItem } from '@atomic/
 import { speak, unlockAudio } from '@atomic/audio';
 import { track } from '../analytics';
 import WeekStats from '../components/WeekStats';
+import CloudStatus from '../components/CloudStatus';
 
 /**
  * 复习页：词级听写闭环。
@@ -79,6 +80,8 @@ export default function ReviewPage({
   return (
     <div className="page">
       <WeekStats completion={completion} playCount={playCount} />
+      {/* 登录/注册与词汇同一界面：词表态常驻显示，听写时隐藏以免占空间 */}
+      {!active && <CloudStatus />}
       <div className="review-summary">
         待复习 {due.length} / 共 {items.length} 个词条
       </div>
