@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the live-panel config for the Atomic Learning architecture diagram.
+"""Build the live-panel config for the Atomic English architecture diagram.
 
 The config is the single source of truth for both the README static image and
 any future animated render. Geometry is authored once here and dumped to JSON.
@@ -74,7 +74,7 @@ def line(x1, y1, x2, y2, color="line2", width=2.2):
 
 
 # ---------------------------------------------------------------- title
-text(100, 104, 1000, "Atomic Learning", size=58, c="ink", b=True, align="center")
+text(100, 104, 1000, "Atomic English", size=58, c="ink", b=True, align="center")
 text(100, 170, 1000, "架构总览 · 离线优先 / 接口先行 / 数据驱动加端",
      size=19, c="dim", align="center")
 elements.append({"type": "rule", "x": 140, "y": 206, "w": 920, "c": "line2"})
@@ -183,7 +183,7 @@ elements.append({
 })
 
 config = {
-    "meta": {"title": "Atomic Learning · 架构总览 (light-pastel)", "lang": "zh-CN"},
+    "meta": {"title": "Atomic English · 架构总览 (light-pastel)", "lang": "zh-CN"},
     "canvas": {"preset": "4:5", "duration": 21, "fps": 30, "preroll": 0},
     "theme": {"preset": "light-pastel"},
     "clock": {"start": "09:00:00", "rate": 2},

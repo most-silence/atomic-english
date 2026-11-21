@@ -1,4 +1,4 @@
--- Atomic Learning 云同步表。
+-- Atomic English 云同步表。
 -- 纪律：本地 Dexie 仍是真相源；这些表只做备份 + 多端同步。
 -- RLS 保证一个用户绝对读不到另一个用户的数据（framework-selection §6 的数据隔离要求）。
 

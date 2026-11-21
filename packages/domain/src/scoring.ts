@@ -1,5 +1,5 @@
 /**
- * 判分算法——由截图反推（见 docs/research/atomic-learning-reverse.md §2.3）：
+ * 判分算法——由截图反推（见 docs/research/reference-behavior-notes.md §2.3）：
  * 原句 `I have started surfing again after years off.`（8 词） vs 输入 `I start`（2 词）
  * 得 12.50% = 1/8，只有 `I` 精确命中，`start ≠ started`。
  * 故：正确率 = 精确匹配的词数 / 原句词数；不做词干归一，形态变化算错。

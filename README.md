@@ -1,6 +1,6 @@
 <div align="center">
 
-# Atomic Learning
+# Atomic English
 
 **听一句话，写出来，第二天再复习一遍。**
 一个把「每日听写 → 逐词判分 → 间隔复习」跑成完整闭环的开源学习应用。
@@ -18,7 +18,7 @@
 
 ## 为什么做这个
 
-背单词的 App 很多，但「听懂一句话并能拼写出来」这件事，几乎没有产品把它做成每天 2 分钟的习惯。Atomic Learning 从一个截图开始逆向分析行为规则（判分算法、复习词条抽取、进度派生），再用现代前端技术栈重新实现，并逐步补齐 PWA、音频、云同步。
+背单词的 App 很多，但「听懂一句话并能拼写出来」这件事，几乎没有产品把它做成每天 2 分钟的习惯。Atomic English 参考公开的界面截图归纳出通用的行为规则（判分算法、复习词条抽取、进度派生），再用自己的技术栈独立实现，并逐步补齐 PWA、音频、云同步。项目不复用任何第三方商业软件的代码、商标或设计资产。
 
 设计上只有三条硬规矩：
 
@@ -40,7 +40,7 @@
 
 </div>
 
-判分不是模糊的「差不多」：`I start` 对原句 `I have started surfing again after years off.` 只命中 `I`，得 **12.50%**（1/8），`start ≠ started`，不做词干归一。错词按字母序进入复习队列，再按 SRS 间隔推进。这些规则都有截图证据和数值验证，见 [逆向分析](docs/research/atomic-learning-reverse.md)。
+判分不是模糊的「差不多」：`I start` 对原句 `I have started surfing again after years off.` 只命中 `I`，得 **12.50%**（1/8），`start ≠ started`，不做词干归一。错词按字母序进入复习队列，再按 SRS 间隔推进。这些规则都有示例和数值验证，见 [行为观察笔记](docs/research/reference-behavior-notes.md)。
 
 ## 核心能力
 
@@ -96,7 +96,7 @@ pnpm dev
 
 <div align="center">
 
-![Atomic Learning 架构总览](docs/assets/architecture/atomic-architecture.webp)
+![Atomic English 架构总览](docs/assets/architecture/atomic-architecture.webp)
 
 <sub>数据流随 6 个阶段循环高亮；状态与日志为示意。配置见 [`config.json`](docs/assets/architecture/config.json)，重新出图用 `scripts/build-architecture-panel.py`。</sub>
 
@@ -166,4 +166,4 @@ pnpm test && pnpm verify:ui && pnpm verify:pwa   # PR 前请跑这三套
 
 ## License
 
-MIT © Atomic Learning contributors
+MIT © Atomic English contributors

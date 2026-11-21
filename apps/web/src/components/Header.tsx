@@ -8,7 +8,7 @@ export default function Header() {
   return (
     <header className="header">
       <div className="brand-logo" aria-label="logo">∞∞</div>
-      <h1 className="brand-title">Atomic Learning</h1>
+      <h1 className="brand-title">Atomic English</h1>
     </header>
   );
 }

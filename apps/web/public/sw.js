@@ -1,6 +1,6 @@
 /* eslint-env serviceworker */
 /**
- * Atomic Learning Service Worker（手写，不引 Workbox）。
+ * Atomic English Service Worker（手写，不引 Workbox）。
  *
  * 缓存策略按请求类型分开，不搞全局一把梭（依据 framework-selection §10 阶段二要求）：
  *   导航请求      → network-first，失败回落到缓存的 index.html（应用壳离线可用）

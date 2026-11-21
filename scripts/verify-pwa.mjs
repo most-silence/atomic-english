@@ -96,7 +96,7 @@ try {
     iconSizes,
     purposes,
   });
-  check(manifest.name === 'Atomic Learning', 'manifest.name 不符');
+  check(manifest.name === 'Atomic English', 'manifest.name 不符');
   check(manifest.start_url === '/?source=pwa', 'manifest.start_url 不符');
   check(manifest.display === 'standalone', 'manifest.display 应为 standalone');
   check(iconSizes.includes('192x192') && iconSizes.includes('512x512'), '需同时有 192/512 图标');

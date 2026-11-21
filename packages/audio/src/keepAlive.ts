@@ -104,7 +104,7 @@ export function isKeepAliveActive(): boolean {
 }
 
 /** 更新锁屏/通知栏的媒体信息；返回是否成功。 */
-export function updateMediaSession(title: string, artist = 'Atomic Learning'): boolean {
+export function updateMediaSession(title: string, artist = 'Atomic English'): boolean {
   if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return false;
   try {
     navigator.mediaSession.metadata = new MediaMetadata({

@@ -84,7 +84,7 @@ export default function PwaStatus() {
         <div className="pwa-banner pwa-banner-install" data-testid="pwa-install">
           {install.canPrompt ? (
             <>
-              <span>把 Atomic Learning 装到桌面，离线也能背单词</span>
+              <span>把 Atomic English 装到桌面，离线也能背单词</span>
               <button
                 type="button"
                 className="pwa-banner-btn"
