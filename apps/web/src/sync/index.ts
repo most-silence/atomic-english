@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import {
   noopAuthClient,
   noopSyncClient,
+  SupabaseAnalyticsSink,
   SupabaseAuthClient,
   SupabaseSyncClient,
   type AuthClient,
   type AuthStatus,
   type SyncClient,
 } from '@atomic/api-client';
+import { flushEvents, setAnalyticsSink } from '../analytics';
 import { SyncOrchestrator } from './orchestrator';
 
 /**
@@ -31,11 +33,25 @@ export function initCloud(): void {
   };
   authClient = new SupabaseAuthClient(config);
   syncClient = new SupabaseSyncClient(config);
+  // 埋点走同一后端；未登录时 sink 返回 false，事件留在本地队列
+  setAnalyticsSink(new SupabaseAnalyticsSink(config));
   orchestrator.configure(authClient, syncClient);
 }
 
 export function getAuthClient(): AuthClient {
   return authClient;
+}
+
+/**
+ * 登录态变化时立即冲刷埋点队列。
+ * 安装漏斗事件发生在登录之前（未登录时 sink 返回 false、留在本地），
+ * 登录后必须主动上报，否则要等下一个 60 秒定时器。
+ */
+export function onSignedInFlush(): void {
+  if (!configured) return;
+  getAuthClient().onAuthChange((status) => {
+    if (status.state === 'signedIn') void flushEvents();
+  });
 }
 
 export function useAuthStatus(): AuthStatus {

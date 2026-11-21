@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { AnalyticsEvent } from '@atomic/db';
 import type { SyncSnapshot } from '@atomic/domain';
+import type { AnalyticsSink } from './index';
 import type { AuthClient, AuthStatus, SyncClient } from './sync';
 
 /**
@@ -170,5 +172,36 @@ export class SupabaseSyncClient implements SyncClient {
     }
 
     return true;
+  }
+}
+
+/**
+ * 埋点上报到 Supabase analytics_events 表。
+ *
+ * RLS 按 auth.uid() 隔离，所以未登录时 send() 返回 false——
+ * 事件留在本地 IndexedDB 队列里，等登录后下次 flush 再上报，不丢数据。
+ * 这与"本地优先"的纪律一致：埋点不能成为阻塞学习的前提。
+ */
+export class SupabaseAnalyticsSink implements AnalyticsSink {
+  readonly name = 'supabase';
+  private client: SupabaseClient;
+
+  constructor(config: SupabaseConfig) {
+    this.client = makeClient(config);
+  }
+
+  async send(events: AnalyticsEvent[]): Promise<boolean> {
+    const { data: auth } = await this.client.auth.getUser();
+    if (!auth.user) return false; // 未登录：保留队列，等待下次
+
+    const { error } = await this.client.from('analytics_events').insert(
+      events.map((e) => ({
+        user_id: auth.user.id,
+        name: e.name,
+        payload: e.payload ?? {},
+        created_at: e.createdAt,
+      })),
+    );
+    return !error;
   }
 }

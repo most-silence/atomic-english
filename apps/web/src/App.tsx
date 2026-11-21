@@ -34,7 +34,7 @@ import ReviewPage from './pages/ReviewPage';
 import StreakPage from './pages/StreakPage';
 import DiagnosticsPage from './pages/DiagnosticsPage';
 import CloudStatus from './components/CloudStatus';
-import { initCloud, markDirty, orchestrator } from './sync';
+import { initCloud, markDirty, onSignedInFlush, orchestrator } from './sync';
 
 interface Session {
   progress: Progress;
@@ -66,6 +66,7 @@ export default function App() {
     let prevSyncedAt: string | null = null;
     let unsubscribe: () => void = () => {};
     initCloud();
+    onSignedInFlush();
     unsubscribe = orchestrator.subscribe((state) => {
       if (state.lastSyncAt && state.lastSyncAt !== prevSyncedAt) {
         prevSyncedAt = state.lastSyncAt;

@@ -133,7 +133,22 @@ try {
   );
   report.steps.push({ step: 'rls', bAttempts: bAttempts?.length, bProgress });
 
-  // ── 6. 幂等：重复插入同一 attempt 应被 unique 约束挡住 ──────
+  // ── 6. 埋点事件写入（模拟 SupabaseAnalyticsSink）───────────
+  const { error: eventErr } = await authA.from('analytics_events').insert({
+    user_id: loginA.user.id,
+    name: 'verify_event',
+    payload: { source: 'verify-backend' },
+    created_at: new Date().toISOString(),
+  });
+  check(!eventErr, `analytics_events 写入失败: ${eventErr?.message ?? ''}`);
+  const { data: aEvents } = await authA.from('analytics_events').select('*').eq('name', 'verify_event');
+  check(aEvents?.length === 1, '埋点事件应可读回');
+  // RLS：B 也读不到 A 的埋点
+  const { data: bEvents } = await authB.from('analytics_events').select('*').eq('name', 'verify_event');
+  check(bEvents?.length === 0, `RLS 失败：B 读到了 A 的埋点 ${bEvents?.length ?? 0} 条`);
+  report.steps.push({ step: 'analytics', aEvents: aEvents?.length, bEvents: bEvents?.length });
+
+  // ── 7. 幂等：重复插入同一 attempt 应被 unique 约束挡住 ──────
   const { error: dupErr } = await authA.from('attempts').insert({
     user_id: loginA.user.id,
     challenge_id: 593,
