@@ -12,12 +12,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
+import { launchOptions } from './lib/browser.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(HERE, '../apps/web/dist');
 const PORT = 4173;
 const BASE = `http://127.0.0.1:${PORT}`;
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -68,7 +68,7 @@ const check = (cond, msg) => {
 
 let browser;
 try {
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
+  browser = await chromium.launch(launchOptions());
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,

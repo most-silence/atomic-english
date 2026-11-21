@@ -70,10 +70,12 @@ schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
-enabled = true
+# 题库种子数据在 packages/domain/src/seed.ts（本地 IndexedDB），SQL 库只存用户同步数据，
+# 无需 SQL seed；关闭以免 db reset 因 seed.sql 缺失报错。
+enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = []
 
 [db.network_restrictions]
 # Enable management of network restrictions.

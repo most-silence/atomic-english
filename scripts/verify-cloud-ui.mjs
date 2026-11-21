@@ -6,9 +6,7 @@
  * 跑法：node scripts/verify-cloud-ui.mjs
  */
 import { chromium } from 'playwright-core';
-
-const BASE = process.env.VERIFY_BASE_URL || 'http://127.0.0.1:5173/';
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+import { BASE_URL as BASE, launchOptions } from './lib/browser.mjs';
 const stamp = Date.now();
 const email = `ui-${stamp}@example.com`;
 const pw = 'Verify12345!';
@@ -18,7 +16,7 @@ const consoleErrors = [];
 const check = (cond, msg) => { if (!cond) fail.push(msg); };
 const report = { steps: [] };
 
-const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+const browser = await chromium.launch(launchOptions());
 
 try {
   // 用同一个 browser、两个独立 context 模拟"两台设备"

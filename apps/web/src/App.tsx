@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  FREE_TRANSLATIONS_PER_DAY,
   buildWrongWordReviewItems,
   courseProgress,
   currentChallenge,
   currentStreak,
+  formatCompletion,
   initialProgress,
   markCompleted,
+  mergeReviewItems,
   reviewItemAfterPractice,
   SEED_CHALLENGES,
   scoreTranscript,
@@ -53,7 +56,12 @@ interface Session {
 /** 跨天重置：若 progress.currentDate 不是今天，重置每日额度与播放计数 */
 function normalizeDaily(progress: Progress, today: string): Progress {
   if (progress.currentDate === today) return progress;
-  return { ...progress, currentDate: today, todayPlayCount: 0, freeTranslationsLeft: 6 };
+  return {
+    ...progress,
+    currentDate: today,
+    todayPlayCount: 0,
+    freeTranslationsLeft: FREE_TRANSLATIONS_PER_DAY,
+  };
 }
 
 export default function App() {
@@ -180,7 +188,7 @@ export default function App() {
             <div className="streak-caption">已完成 {course.total} 道挑战 · 连续 {streak} 天</div>
           </div>
           <p style={{ textAlign: 'center', color: '#8e8e93', fontSize: 14, lineHeight: 1.7 }}>
-            本周完成率 {Math.round(completion * 100)}%<br />
+            本周完成率 {formatCompletion(completion)}<br />
             复习词条 {reviewItems.length} 个
           </p>
           <button
@@ -241,6 +249,7 @@ export default function App() {
         completedDates: markCompleted(s.progress.completedDates, today),
       },
       attempts: [...s.attempts, attempt],
+      // 复用域层合并：已有词条按 SRS 成熟度取，不会被新错词重置复习进度
       reviewItems: mergeReviewItems(s.reviewItems, newItems),
     }));
   };
@@ -337,11 +346,4 @@ export default function App() {
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );
-}
-
-function mergeReviewItems(existing: ReviewItem[], incoming: ReviewItem[]): ReviewItem[] {
-  const map = new Map<string, ReviewItem>();
-  for (const item of existing) map.set(`${item.sourceChallengeId}:${item.word}`, item);
-  for (const item of incoming) map.set(`${item.sourceChallengeId}:${item.word}`, item);
-  return [...map.values()].sort((a, b) => a.word.localeCompare(b.word));
 }

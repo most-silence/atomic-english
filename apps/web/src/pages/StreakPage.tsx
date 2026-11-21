@@ -1,3 +1,5 @@
+import { formatCompletion } from '@atomic/domain';
+
 export default function StreakPage({
   streak,
   completion,
@@ -38,7 +40,7 @@ function WeekSummary({
   return (
     <div className="metrics" style={{ marginTop: 32 }}>
       <div>
-        <div className="metric-value">{Math.round(completion * 100)}%</div>
+        <div className="metric-value">{formatCompletion(completion)}</div>
         <div className="metric-label">本周完成率</div>
       </div>
       <div>

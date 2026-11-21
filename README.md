@@ -10,7 +10,7 @@
 [![Stack](https://img.shields.io/badge/stack-React%2019%20%C2%B7%20Vite%208%20%C2%B7%20TS%205.9-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev)
 [![PWA](https://img.shields.io/badge/PWA-installable%20%26%20offline-5DCAA5?style=flat-square)](docs/research/pwa-audio-spike.md)
 [![Backend](https://img.shields.io/badge/backend-Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-[![Tests](https://img.shields.io/badge/tests-50%20passing-brightgreen?style=flat-square)](scripts)
+[![Tests](https://img.shields.io/badge/tests-63%20passing-brightgreen?style=flat-square)](scripts)
 
 </div>
 
@@ -121,7 +121,7 @@ pnpm dev
 
 ```bash
 pnpm typecheck          # 全包类型检查
-pnpm test               # 50 个单测（domain 36 + audio 14）
+pnpm test               # 63 个单测（domain 45 + audio 14 + api-client 4）
 pnpm build              # 生产构建
 pnpm verify:ui          # 阶段一：9 环节全流程（Playwright + 系统 Chrome，390px 视口）
 pnpm verify:pwa         # 阶段二：10 环节 PWA + 音频 spike

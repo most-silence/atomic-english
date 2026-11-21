@@ -4,6 +4,7 @@ import {
   clearAudioCache,
   countCachedAudio,
   getAudioCapabilities,
+  AUDIO_CACHE_NAME,
   isKeepAliveActive,
   makeToneWavBlob,
   speak,
@@ -121,7 +122,7 @@ export default function DiagnosticsPage() {
     const url = URL.createObjectURL(blob);
     try {
       const response = await fetch(url);
-      const cache = await caches.open('atomic-audio-v1');
+      const cache = await caches.open(AUDIO_CACHE_NAME);
       await cache.put('/__spike__/tone.wav', response);
       const hit = await cache.match('/__spike__/tone.wav');
       const size = hit ? (await hit.blob()).size : 0;

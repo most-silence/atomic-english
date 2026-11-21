@@ -94,7 +94,18 @@
 
 对照 §10.1 阶段二准入门槛：
 
-- ⚠️ **安装漏斗每一环有埋点（本地完成，上报待后端）**：已建 `IndexedDB 队列 + 可插拔 sink`，覆盖 `install_prompt_shown` / `install_accepted` / `install_dismissed` / `install_unavailable` / `app_installed` / `install_banner_shown` / `pwa_offline_shown` / `sw_update_shown` / `audio_unlock`，并有 `diag_selftest` 做端到端自检。当前 sink 是 console，接 Supabase 时改成 `createHttpSink('/api/events')` 即可，业务侧调用不动。**但"上报成功"这件事目前无远端证据**，等后端上线后再验收这一条。
+- ✅ **安装漏斗每一环有埋点，已接真实远端上报**：`IndexedDB 队列 + 可插拔 sink` 已落地，出口为 `SupabaseAnalyticsSink`（直写 `analytics_events` 表，按 `auth.uid()` 经 RLS 隔离）。未登录时 sink 返回 false、事件留在本地队列，登录成功后立即冲刷——不丢安装漏斗早期事件。所有事件经 `apps/web/src/analytics` 的 `track()` 入队。当前登记的事件名：
+
+  | 事件名 | 触发点 | 说明 |
+  | --- | --- | --- |
+  | `install_prompt_shown` / `install_accepted` / `install_dismissed` / `install_unavailable` / `app_installed` / `install_banner_shown` | `PwaStatus.tsx` / `useInstallPrompt.ts` | 安装漏斗各环 |
+  | `pwa_offline_shown` / `sw_update_shown` | `PwaStatus.tsx` | 离线提示 / 版本更新 |
+  | `audio_unlock` | `ChallengePage` / `ReviewPage` / `DiagnosticsPage` | 音频手势解锁结果 |
+  | `diag_selftest` | `DiagnosticsPage` | 端到端自检 |
+  | `translation_success` / `translation_failed` | `App.handleTranslate` | 真实翻译请求结果，失败带 reason |
+  | `review_word_graded` | `ReviewPage.submit` | 词级听写判分，带 word / accuracy / reviewedCount |
+
+  新增事件必须同步登记到本表（见 AGENTS.md 约定）。`verify:backend` 已验证埋点写入与 RLS 隔离（A 用户可读、B 用户读不到）。
 - ❌ **失败路径全测过**：缓存过期（`x-atomic-stale` 已实现但未测）、请求中断、登录态切换（暂无登录）、旧版已安装更新（UI 已实现但未做跨版本实测）。
 - ❌ **iOS Safari / Android 各主流 WebView 音频验证**：见 §4 清单。
 - ✅ manifest + SW + 离线兜底 + 音频机制 + 主流程无回归。

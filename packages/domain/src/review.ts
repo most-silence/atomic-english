@@ -38,12 +38,26 @@ export function extractReviewWords(sentence: string): string[] {
   return words.sort((a, b) => a.localeCompare(b));
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** SRS 排期：正确率越高间隔越长（1/2/4 天），错误当天再练 */
+/**
+ * SRS 档位单一来源：顺序从高到低匹配，取第一个 minAccuracy 达标者。
+ * 排期函数与 UI 文案都从这里派生，避免两处各写一套阈值和天数。
+ */
+export const SRS_TIERS = [
+  { minAccuracy: 0.9, intervalDays: 4, label: '已安排 4 天后再复习' },
+  { minAccuracy: 0.5, intervalDays: 2, label: '已安排 2 天后再复习' },
+  { minAccuracy: 0, intervalDays: 1, label: '明天再练一次' },
+] as const;
+
+export function srsTierFor(accuracy: number): (typeof SRS_TIERS)[number] {
+  return SRS_TIERS.find((tier) => accuracy >= tier.minAccuracy) ?? SRS_TIERS[SRS_TIERS.length - 1];
+}
+
+/** SRS 排期：正确率越高间隔越长，由 SRS_TIERS 决定 */
 export function nextReviewDate(accuracy: number, from: Date = new Date()): string {
-  const days = accuracy >= 0.9 ? 4 : accuracy >= 0.5 ? 2 : 1;
-  return new Date(from.getTime() + days * DAY_MS).toISOString();
+  const { intervalDays } = srsTierFor(accuracy);
+  return new Date(from.getTime() + intervalDays * DAY_MS).toISOString();
 }
 
 export function buildReviewItems(

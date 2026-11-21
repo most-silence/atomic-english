@@ -1,12 +1,10 @@
 import { chromium } from 'playwright-core';
-
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const URL = process.env.VERIFY_BASE_URL || 'http://127.0.0.1:5173/';
+import { BASE_URL as URL, launchOptions } from './lib/browser.mjs';
 const errors = [];
 const fail = [];
 const check = (cond, msg) => { if (!cond) fail.push(msg); };
 
-const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+const browser = await chromium.launch(launchOptions());
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'zh-CN',

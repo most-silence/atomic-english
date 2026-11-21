@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scoreTranscript, formatAccuracy } from './scoring.js';
-import { extractReviewWords, buildReviewItems, buildWrongWordReviewItems, reviewItemAfterPractice, dueReviewItems, scoreWord } from './review.js';
+import { extractReviewWords, buildReviewItems, buildWrongWordReviewItems, reviewItemAfterPractice, dueReviewItems, scoreWord, nextReviewDate, srsTierFor, SRS_TIERS } from './review.js';
 import { weeklyCompletion, currentStreak, markCompleted, formatWeekRange } from './progress.js';
 import { currentChallenge, nextChallenge, courseProgress } from './course.js';
 import { SEED_CHALLENGES } from './seed.js';
@@ -156,5 +156,41 @@ describe('词级判分 scoreWord', () => {
 
   it('大小写不敏感', () => {
     expect(scoreWord('SURFING', 'surfing')).toBe(1);
+  });
+});
+
+describe('SRS 档位单一来源', () => {
+  it('三档阈值与间隔天数自洽', () => {
+    expect(SRS_TIERS).toHaveLength(3);
+    expect(srsTierFor(1.0).intervalDays).toBe(4);
+    expect(srsTierFor(0.9).intervalDays).toBe(4);
+    expect(srsTierFor(0.7).intervalDays).toBe(2);
+    expect(srsTierFor(0.5).intervalDays).toBe(2);
+    expect(srsTierFor(0.1).intervalDays).toBe(1);
+    expect(srsTierFor(0).intervalDays).toBe(1);
+  });
+
+  it('nextReviewDate 与档位天数一致', () => {
+    const from = new Date('2026-11-21T00:00:00Z');
+    const getDay = (accuracy: number) => (new Date(nextReviewDate(accuracy, from)).getTime() - from.getTime()) / 86400000;
+    expect(getDay(1.0)).toBe(4);
+    expect(getDay(0.5)).toBe(2);
+    expect(getDay(0)).toBe(1);
+  });
+});
+
+describe('非法日期防御', () => {
+  it('currentStreak 遇到非法日期不当成完成日（不会误算连续）', () => {
+    // currentStreak 用 Set 做字符串匹配，非法日期只是永不命中 → 返回 0，安全
+    expect(currentStreak(['garbage'], new Date('2026-11-21'))).toBe(0);
+    expect(currentStreak(['2026-13-45'], new Date('2026-11-21'))).toBe(0);
+  });
+
+  it('weeklyCompletion 遇到非法日期抛错', () => {
+    expect(() => weeklyCompletion(['not-a-date'], new Date('2026-11-21'))).toThrow(/非法日期/);
+  });
+
+  it('合法日期仍正常工作', () => {
+    expect(currentStreak(['2026-11-21', '2026-11-20'], new Date('2026-11-21T12:00:00Z'))).toBe(2);
   });
 });

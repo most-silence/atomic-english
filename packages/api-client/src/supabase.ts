@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AnalyticsEvent } from '@atomic/db';
+import { FREE_TRANSLATIONS_PER_DAY } from '@atomic/domain';
 import type { SyncSnapshot } from '@atomic/domain';
 import type { AnalyticsSink } from './index';
 import type { AuthClient, AuthStatus, SyncClient } from './sync';
@@ -84,14 +85,39 @@ export class SupabaseAuthClient implements AuthClient {
   }
 }
 
+/**
+ * 远端行的 runtime 校验。
+ * 本地 Dexie 是真相源，脏数据一旦写进去很难恢复，所以宁可抛错让 orchestrator
+ * 进 error 态、保留本地数据，也不能用 `as` 把云端脏值悄悄灌进来。
+ */
+function requireNumber(value: unknown, field: string, fallback?: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (fallback !== undefined && (value === null || value === undefined)) return fallback;
+  throw new Error(`云端字段 ${field} 类型异常：${String(value)}`);
+}
+
+function requireString(value: unknown, field: string, fallback?: string): string {
+  if (typeof value === 'string') return value;
+  if (fallback !== undefined && (value === null || value === undefined)) return fallback;
+  throw new Error(`云端字段 ${field} 类型异常：${String(value)}`);
+}
+
 /** 远端行 → 领域对象 */
 function rowToProgress(row: Record<string, unknown> | null) {
   if (!row) return null;
+  const dates = row.completed_dates;
+  if (dates != null && !Array.isArray(dates)) {
+    throw new Error(`云端字段 completed_dates 类型异常：${String(dates)}`);
+  }
   return {
-    completedDates: (row.completed_dates as string[]) ?? [],
-    todayPlayCount: (row.today_play_count as number) ?? 0,
-    freeTranslationsLeft: (row.free_translations_left as number) ?? 6,
-    currentDate: (row.active_date as string) ?? '',
+    completedDates: (dates ?? []) as string[],
+    todayPlayCount: requireNumber(row.today_play_count, 'today_play_count', 0),
+    freeTranslationsLeft: requireNumber(
+      row.free_translations_left,
+      'free_translations_left',
+      FREE_TRANSLATIONS_PER_DAY,
+    ),
+    currentDate: requireString(row.active_date, 'active_date', ''),
   };
 }
 
@@ -120,18 +146,18 @@ export class SupabaseSyncClient implements SyncClient {
     return {
       progress: rowToProgress(progress.data),
       attempts: (attempts.data ?? []).map((r) => ({
-        challengeId: r.challenge_id as number,
-        transcript: r.transcript as string,
-        playCount: (r.play_count as number) ?? 0,
-        accuracy: (r.accuracy as number) ?? 0,
-        createdAt: r.created_at as string,
+        challengeId: requireNumber(r.challenge_id, 'challenge_id'),
+        transcript: requireString(r.transcript, 'transcript'),
+        playCount: requireNumber(r.play_count, 'play_count', 0),
+        accuracy: requireNumber(r.accuracy, 'accuracy', 0),
+        createdAt: requireString(r.created_at, 'created_at'),
       })),
       reviewItems: (reviews.data ?? []).map((r) => ({
-        sourceChallengeId: r.source_challenge_id as number,
-        word: r.word as string,
-        nextReviewAt: r.next_review_at as string,
-        lastAccuracy: (r.last_accuracy as number) ?? 0,
-        reviewedCount: (r.reviewed_count as number) ?? 0,
+        sourceChallengeId: requireNumber(r.source_challenge_id, 'source_challenge_id'),
+        word: requireString(r.word, 'word'),
+        nextReviewAt: requireString(r.next_review_at, 'next_review_at'),
+        lastAccuracy: requireNumber(r.last_accuracy, 'last_accuracy', 0),
+        reviewedCount: requireNumber(r.reviewed_count, 'reviewed_count', 0),
       })),
     };
   }

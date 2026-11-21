@@ -1,17 +1,25 @@
 /** 进度计算：全部由 completedDates（YYYY-MM-DD）派生，单一真相源。 */
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { DAY_MS } from './review.js';
+import { todayISO } from './types.js';
 
+/**
+ * 解析 YYYY-MM-DD。严格校验格式与范围：
+ * 非法日期若被 JS 静默滚动（如 2026-13-45 → 2027 年），会让连续天数/完成率悄悄算错。
+ * 数据来自本地或云端持久化，必须当作不可信输入处理。
+ */
 function parseISO(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1);
-}
-
-function isoOf(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) throw new Error(`非法日期格式：${iso}`);
+  const [, ys, ms, ds] = match;
+  const y = Number(ys);
+  const m = Number(ms);
+  const d = Number(ds);
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
+    throw new Error(`非法日期：${iso}`);
+  }
+  return date;
 }
 
 /** 周一为一周起点 */
@@ -43,12 +51,12 @@ export function weeklyCompletion(completedDates: string[], now: Date = new Date(
 export function currentStreak(completedDates: string[], now: Date = new Date()): number {
   const days = new Set(completedDates);
   const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (!days.has(isoOf(cursor))) {
+  if (!days.has(todayISO(cursor))) {
     cursor.setTime(cursor.getTime() - DAY_MS);
-    if (!days.has(isoOf(cursor))) return 0;
+    if (!days.has(todayISO(cursor))) return 0;
   }
   let streak = 0;
-  while (days.has(isoOf(cursor))) {
+  while (days.has(todayISO(cursor))) {
     streak += 1;
     cursor.setTime(cursor.getTime() - DAY_MS);
   }

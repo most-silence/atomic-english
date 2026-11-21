@@ -194,6 +194,8 @@ TTS：起步用浏览器 Web Speech API（`speechSynthesis`，免费零依赖）
 
 **结论：起步 IndexedDB（RxDB Dexie storage 或裸 Dexie）+ 自研薄同步（Supabase Realtime + 冲突以"最后写入 + 服务端仲裁"起步）。** 理由：学习产品的离线需求（卡片缓存、离线复习、联网后同步）用简单 CRDT 意义不大，冲突面窄；PowerSync/Electric 都带"免费层停用/自托管运维"成本，等真实用户数据证明需要时再引入。**纪律：** 领域代码只见 `@atomic/db` 的 repository 接口，RxDB→SQLite WASM/OPFS 或 PowerSync 的替换不动业务代码。
 
+> **实施更正（2026-11-21）**：落地时选了**裸 Dexie**（未引入 RxDB），同步机制也简化了——**没有** Supabase Realtime 订阅、**没有**服务端仲裁，改为「登录/本地变更/网络恢复时 pull → `domain.mergeSnapshots` 确定性合并 → push」的定时/事件驱动方式（见 `apps/web/src/sync/orchestrator.ts`、`packages/domain/src/sync.ts`）。合并规则是按字段的确定性策略：完成日期取并集、额度取保守值、作答去重、SRS 取更成熟者。原方案里的 Realtime + 服务端仲裁作为「多端并发冲突证明有必要后再引入」的升级路径保留；当前未实现属已知偏差，不是遗漏。
+
 ---
 
 ## 8. 最终推荐
@@ -233,6 +235,8 @@ TTS：起步用浏览器 Web Speech API（`speechSynthesis`，免费零依赖）
 ---
 
 ## 9. 部署方案（2026-11-20 补充）
+
+> **⚠️ 本节已废弃，不代表当前部署方式。** 2026-11-21 起日常使用与部署统一走 Docker（一条命令拉起前端容器 + Supabase 后端），现行方案见 [`docs/deployment.md`](../deployment.md) 与仓库根 `docker-compose.yml` / `scripts/start-docker.sh`。本节保留作为当时的调研记录（平台对比、大陆可达性、备案成本等事实仍有参考价值），但其中的 EdgeOne Pages + Cloudflare 镜像 + GitHub Actions 编排结论**已不再执行**。若未来要上公网托管平台，可重新启用本节结论。
 
 本节解决"构建产物放到哪里、怎么上线"。约束来自产品形态与用户地域：`apps/web` 是 **Vite 静态产物 + Supabase 后端**（§1、§6），`apps/website` 是 **Astro 静态站**（§5）——两者都是静态托管，不需要 SSR 运行时；真正的动态能力都在 Supabase。因此部署选型的重心不是"跑 Node 服务"，而是**大陆可达性、成本可预测性、预览协作**。
 

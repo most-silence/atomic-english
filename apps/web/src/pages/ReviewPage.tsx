@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { scoreWord, dueReviewItems, type ReviewItem } from '@atomic/domain';
+import { scoreWord, srsTierFor, dueReviewItems, type ReviewItem } from '@atomic/domain';
 import { speak, unlockAudio } from '@atomic/audio';
 import { track } from '../analytics';
 import WeekStats from '../components/WeekStats';
@@ -110,9 +110,7 @@ export default function ReviewPage({
               <p className={result === 1 ? 'review-correct' : 'review-wrong'}>
                 {result === 1 ? '正确' : `正确答案：${active.word}`}
               </p>
-              <p className="review-srs">
-                {result === 1 ? '已安排 4 天后再复习' : result >= 0.5 ? '已安排 2 天后再复习' : '明天再练一次'}
-              </p>
+              <p className="review-srs">{srsTierFor(result).label}</p>
               <button type="button" className="primary-btn" onClick={next} data-testid="review-next">
                 下一个
               </button>

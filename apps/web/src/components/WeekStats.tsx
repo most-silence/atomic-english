@@ -1,4 +1,4 @@
-import { formatWeekRange } from '@atomic/domain';
+import { formatCompletion, formatWeekRange } from '@atomic/domain';
 
 export function CheckIcon() {
   return (
@@ -32,7 +32,7 @@ export default function WeekStats({
     <div className="week-row">
       <span className="week-label">{formatWeekRange(now)}</span>
       <span className="week-stats">
-        <span className="stat"><CheckIcon />{Math.round(completion * 100)}%</span>
+        <span className="stat"><CheckIcon />{formatCompletion(completion)}</span>
         <span className="stat"><HeadphonesIcon />{playCount}</span>
       </span>
     </div>

@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { compareReviewMaturity, reviewItemKey } from '@atomic/domain';
 import type { Attempt, Progress, ReviewItem } from '@atomic/domain';
 
 type ProgressRow = Progress & { key: string };
@@ -139,6 +140,24 @@ export async function clearEvents(): Promise<void> {
   await db.events.clear();
 }
 
+/**
+ * 清理超过保留期的「已上报」事件，避免队列无限增长。
+ * 未上报（flushedAt 为空）的事件永远不删——那是待重试的数据。
+ * @param retentionMs 保留时长，默认 30 天
+ * @returns 删除条数
+ */
+export async function pruneFlushedEvents(retentionMs = 30 * 24 * 60 * 60 * 1000): Promise<number> {
+  const cutoff = Date.now() - retentionMs;
+  // 用 filter 而非 where().below()，确保未上报（flushedAt 为空）的记录绝不被删
+  const staleIds = await db.events.filter((e) => {
+    if (!e.flushedAt) return false;
+    const t = Date.parse(e.flushedAt);
+    return Number.isFinite(t) && t < cutoff;
+  }).primaryKeys();
+  await db.events.bulkDelete(staleIds as number[]);
+  return staleIds.length;
+}
+
 // ── 同步快照 ────────────────────────────────────────────────
 
 /**
@@ -179,10 +198,10 @@ export async function applySnapshot(snapshot: {
     const existingReviews = await db.reviewItems.toArray();
     const reviewMap = new Map(existingReviews.map((r) => [r.id, r]));
     for (const item of snapshot.reviewItems) {
-      const id = `${item.sourceChallengeId}:${item.word}`;
-      const current = reviewMap.get(id as ReviewRow['id']);
-      // SRS 状态不回退：只写比本地更成熟的记录
-      if (!current || item.reviewedCount > current.reviewedCount) {
+      const id = reviewItemKey(item);
+      const current = reviewMap.get(id);
+      // 复用域层的成熟度比较，避免持久层二次判断丢掉 mergeSnapshots 的 tie-break 结果
+      if (!current || compareReviewMaturity(item, current) > 0) {
         await db.reviewItems.put({ ...item, id });
       }
     }

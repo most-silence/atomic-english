@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compareReviewMaturity,
   mergeAttempts,
   mergeReviewItems,
   mergeSnapshots,
+  reviewItemKey,
   snapshotsEqual,
   type SyncSnapshot,
 } from './sync';
@@ -145,3 +147,37 @@ describe('snapshotsEqual', () => {
 function empty(): SyncSnapshot {
   return { progress: null, attempts: [], reviewItems: [] };
 }
+
+describe('compareReviewMaturity（非法日期不塌成 0）', () => {
+  it('nextReviewAt 非法时仍以 reviewedCount 为主排序', () => {
+    // 旧实现 reviewMaturity 在 Date.parse('') 为 NaN 时整个表达式塌成 0，
+    // 导致 reviewedCount=100 被判为最不成熟。这里锁死修复。
+    const high = { reviewedCount: 100, nextReviewAt: '' };
+    const low = { reviewedCount: 1, nextReviewAt: '2026-11-21T00:00:00Z' };
+    expect(compareReviewMaturity(high, low)).toBeGreaterThan(0);
+    expect(compareReviewMaturity(low, high)).toBeLessThan(0);
+  });
+
+  it('同次数时按 nextReviewAt 排序，非法日期视为最早', () => {
+    const valid = { reviewedCount: 2, nextReviewAt: '2026-11-25T00:00:00Z' };
+    const invalid = { reviewedCount: 2, nextReviewAt: 'not-a-date' };
+    expect(compareReviewMaturity(valid, invalid)).toBeGreaterThan(0);
+    expect(compareReviewMaturity(invalid, invalid)).toBe(0);
+  });
+
+  it('mergeReviewItems 不会因非法日期回退高次数词条', () => {
+    const freshBad = {
+      word: 'off', sourceChallengeId: 593,
+      reviewedCount: 5, nextReviewAt: '', lastAccuracy: 0.5,
+    };
+    const staleGood = {
+      word: 'off', sourceChallengeId: 593,
+      reviewedCount: 1, nextReviewAt: '2026-11-21T00:00:00Z', lastAccuracy: 0.5,
+    };
+    expect(mergeReviewItems([staleGood], [freshBad])[0]).toEqual(freshBad);
+  });
+
+  it('reviewItemKey 稳定且全仓一致', () => {
+    expect(reviewItemKey({ sourceChallengeId: 593, word: 'off' })).toBe('593:off');
+  });
+});

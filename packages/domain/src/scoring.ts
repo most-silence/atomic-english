@@ -38,31 +38,23 @@ export interface ScoreResult {
 export function scoreTranscript(transcript: string, sentence: string): ScoreResult {
   const targetTokens = tokenize(sentence);
   const userTokens = tokenize(transcript);
-  const remaining = new Map<string, number>();
-  for (const token of targetTokens) {
-    remaining.set(token, (remaining.get(token) ?? 0) + 1);
-  }
-
-  const userMatched = userTokens.map((token) => {
-    const count = remaining.get(token) ?? 0;
-    if (count > 0) {
-      remaining.set(token, count - 1);
-      return true;
-    }
-    return false;
-  });
 
   const matched = new Array<boolean>(targetTokens.length).fill(false);
-  const consume = new Map<string, number>();
-  for (const token of userTokens) {
-    const used = consume.get(token) ?? 0;
-    if (used >= targetTokens.filter((t) => t === token).length) continue;
-    const idx = targetTokens.findIndex((t, i) => t === token && !matched[i]);
-    if (idx >= 0) {
-      matched[idx] = true;
-      consume.set(token, used + 1);
-    }
-  }
+  // 为每个 token 预先建立原句中未匹配位置的队列，用户 token 按顺序出队即可，
+  // 避免旧实现在循环内反复 filter/findIndex 的 O(n²)。
+  const slots = new Map<string, number[]>();
+  targetTokens.forEach((token, index) => {
+    const queue = slots.get(token) ?? [];
+    queue.push(index);
+    slots.set(token, queue);
+  });
+  const userMatched = userTokens.map((token) => {
+    const queue = slots.get(token);
+    const index = queue?.shift();
+    if (index === undefined) return false;
+    matched[index] = true;
+    return true;
+  });
 
   const correctCount = matched.filter(Boolean).length;
   const totalCount = targetTokens.length;

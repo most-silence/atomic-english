@@ -86,7 +86,7 @@ A：Supabase Auth 按 Origin 白名单校验。`supabase/config.toml` 的 `site_
 A：Docker 部署要重新构建镜像：`docker compose up -d --build`。本地开发用 `pnpm dev` 才有 HMR。
 
 **Q：容器内连不上后端？**
-A：Windows/Mac 用 `host.docker.internal`；Linux 确认 `extra_hosts: host.docker.internal:host-gateway` 生效，或改用宿主机 IP。
+A：先确认你问的是哪一侧。前端容器本身不主动连后端——`config.js` 注入的 URL 由**浏览器**发请求，所以填 `127.0.0.1:54321` 即可，与容器网络无关。若确实有容器内进程要访问宿主机服务（如调试用），Windows/Mac 用 `host.docker.internal`，Linux 确认 `extra_hosts: host.docker.internal:host-gateway` 生效。
 
 **Q：Service Worker 缓存了旧的 config.js？**
 A：nginx 已对 `config.js` 和 `sw.js` 设置 `no-cache`。若仍异常，用无痕窗口或 DevTools → Application → Clear storage。
@@ -98,6 +98,6 @@ A：nginx 已对 `config.js` 和 `sw.js` 设置 `no-cache`。若仍异常，用�
 | 前端服务 | nginx 容器 | Vite dev server |
 | Node/pnpm | 只在构建镜像时用 | 本机常驻 |
 | 热更新 | 无，改代码需重建镜像 | 有 |
-| 后端地址 | `host.docker.internal:54321` | `127.0.0.1:54321` |
+| 后端地址 | `127.0.0.1:54321`（浏览器视角） | `127.0.0.1:54321` |
 | 配置注入 | 运行时 `/config.js` | `.env.local` 构建时 |
 | 适用 | 日常使用、演示、部署 | 改代码、调试 |

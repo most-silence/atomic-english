@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from './http.js';
+
 /**
  * 翻译提供方接口。
  * 与 AuthClient / SyncClient 同一纪律：具体实现收敛在 api-client，前端只见接口。
@@ -37,7 +39,7 @@ export class MyMemoryTranslationProvider implements TranslationProvider {
 
     let response: Response;
     try {
-      response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      response = await fetchWithTimeout(url.toString());
     } catch (err) {
       throw new Error(`翻译服务不可达：${err instanceof Error ? err.message : String(err)}`);
     }

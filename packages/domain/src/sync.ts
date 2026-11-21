@@ -67,13 +67,28 @@ export function mergeAttempts(local: Attempt[], remote: Attempt[]): Attempt[] {
   return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-function reviewKey(r: ReviewItem): string {
+/** 复习词条的稳定键，全仓统一使用（本地库、同步合并、UI 都靠它识别同一条） */
+export function reviewItemKey(r: Pick<ReviewItem, 'sourceChallengeId' | 'word'>): string {
   return `${r.sourceChallengeId}:${r.word}`;
 }
 
-function reviewMaturity(r: ReviewItem): number {
-  // reviewedCount 主排序；nextReviewAt 作为同次数时的 tie-break
-  return r.reviewedCount * 1e12 + Date.parse(r.nextReviewAt || '') * 1e-3 || 0;
+/**
+ * 比较两条 SRS 状态的成熟度，返回 >0 表示 a 更成熟。
+ *
+ * 用显式元组比较而非「数值相加」：先前版本 `reviewedCount * 1e12 + Date.parse(...)`
+ * 在 nextReviewAt 非法时 NaN 会让整个表达式塌成 0，即使 reviewedCount 很大也会被判为最不成熟，
+ * 导致多端同步时状态回退——正是这个函数本该防止的事。
+ */
+export function compareReviewMaturity(
+  a: Pick<ReviewItem, 'reviewedCount' | 'nextReviewAt'>,
+  b: Pick<ReviewItem, 'reviewedCount' | 'nextReviewAt'>,
+): number {
+  const countDiff = a.reviewedCount - b.reviewedCount;
+  if (countDiff !== 0) return countDiff;
+  const ta = Date.parse(a.nextReviewAt);
+  const tb = Date.parse(b.nextReviewAt);
+  // 非法日期视为 0，不会污染 reviewedCount 的主排序
+  return (Number.isFinite(ta) ? ta : 0) - (Number.isFinite(tb) ? tb : 0);
 }
 
 /**
@@ -82,11 +97,11 @@ function reviewMaturity(r: ReviewItem): number {
  */
 export function mergeReviewItems(local: ReviewItem[], remote: ReviewItem[]): ReviewItem[] {
   const byKey = new Map<string, ReviewItem>();
-  for (const r of local) byKey.set(reviewKey(r), r);
+  for (const r of local) byKey.set(reviewItemKey(r), r);
   for (const r of remote) {
-    const existing = byKey.get(reviewKey(r));
-    if (!existing || reviewMaturity(r) > reviewMaturity(existing)) {
-      byKey.set(reviewKey(r), r);
+    const existing = byKey.get(reviewItemKey(r));
+    if (!existing || compareReviewMaturity(r, existing) > 0) {
+      byKey.set(reviewItemKey(r), r);
     }
   }
   return Array.from(byKey.values()).sort((a, b) => a.word.localeCompare(b.word));
