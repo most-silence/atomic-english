@@ -10,10 +10,13 @@
     "test": "turbo run test",
     "icons": "node scripts/check-icons.mjs && node scripts/generate-icons.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
-    "verify:pwa": "node scripts/verify-pwa.mjs"
+    "verify:pwa": "node scripts/verify-pwa.mjs",
+    "verify:backend": "node scripts/verify-backend.mjs"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "playwright-core": "1.55.0",
+    "supabase": "^3.2.0",
     "turbo": "2.11.13",
     "typescript": "5.9.3"
   }

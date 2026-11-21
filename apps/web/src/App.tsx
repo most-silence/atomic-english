@@ -33,6 +33,8 @@ import ChallengePage from './pages/ChallengePage';
 import ReviewPage from './pages/ReviewPage';
 import StreakPage from './pages/StreakPage';
 import DiagnosticsPage from './pages/DiagnosticsPage';
+import CloudStatus from './components/CloudStatus';
+import { initCloud, markDirty, orchestrator } from './sync';
 
 interface Session {
   progress: Progress;
@@ -57,6 +59,36 @@ export default function App() {
   // 提交最后一题后仍要展示判分，等用户确认才进通关页
   const [lastChallenge, setLastChallenge] = useState<typeof SEED_CHALLENGES[number] | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+
+  // 云同步初始化；只在一次同步成功后重载（syncing/error 不重载，避免打断用户）
+  const [syncReload, setSyncReload] = useState(0);
+  useEffect(() => {
+    let prevSyncedAt: string | null = null;
+    let unsubscribe: () => void = () => {};
+    void initCloud().then(() => {
+      unsubscribe = orchestrator.subscribe((state) => {
+        if (state.lastSyncAt && state.lastSyncAt !== prevSyncedAt) {
+          prevSyncedAt = state.lastSyncAt;
+          setSyncReload((n) => n + 1);
+        }
+      });
+    });
+    return () => unsubscribe();
+  }, []);
+  useEffect(() => {
+    if (syncReload === 0) return;
+    let cancelled = false;
+    (async () => {
+      const progress = await loadProgress();
+      if (cancelled || !progress) return;
+      setSession({
+        progress,
+        attempts: await loadAttempts(),
+        reviewItems: await loadReviewItems(),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [syncReload]);
 
   // 启动 / 重置后：从 IndexedDB 恢复真实状态（唯一入口）
   useEffect(() => {
@@ -96,6 +128,7 @@ export default function App() {
       <div className="app">
         <Header />
         <PwaStatus />
+        <CloudStatus />
         <DiagnosticsPage />
       </div>
     );
@@ -106,6 +139,7 @@ export default function App() {
       <div className="app">
         <Header />
         <PwaStatus />
+        <CloudStatus />
         <div className="page" />
       </div>
     );
@@ -127,6 +161,7 @@ export default function App() {
       <div className="app">
         <Header />
         <PwaStatus />
+        <CloudStatus />
         <div className="page">
           <div className="streak-hero">
             <div className="streak-number">{course.completed}</div>
@@ -180,6 +215,7 @@ export default function App() {
     void saveAttempt(attempt);
     const newItems = buildReviewItems(challenge.id, challenge.sentence, result.accuracy);
     void saveReviewItems(newItems);
+    markDirty();
     updateSession((s) => ({
       progress: {
         ...s.progress,
@@ -211,6 +247,7 @@ export default function App() {
   const handlePracticeWord = (item: ReviewItem, accuracy: number) => {
     const updated = reviewItemAfterPractice(item, accuracy);
     void saveReviewItem(updated);
+    markDirty();
     updateSession((s) => ({
       reviewItems: s.reviewItems.map((r) =>
         r.word === item.word && r.sourceChallengeId === item.sourceChallengeId ? updated : r,
@@ -222,6 +259,7 @@ export default function App() {
     <div className="app">
       <Header />
       <PwaStatus />
+      <CloudStatus />
       {tab === 'challenge' && (
         <ChallengePage
           key={`${key}-${challenge.id}`}

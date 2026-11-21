@@ -138,3 +138,53 @@ export async function countEvents(): Promise<number> {
 export async function clearEvents(): Promise<void> {
   await db.events.clear();
 }
+
+// ── 同步快照 ────────────────────────────────────────────────
+
+/**
+ * 导出本地快照用于云同步。
+ * 注意：events（埋点）走独立的 AnalyticsSink 通道，不塞进快照，
+ * 避免一次学习同步把几百条埋点一起上传。
+ */
+export async function exportSnapshot(): Promise<{
+  progress: import('@atomic/domain').Progress | null;
+  attempts: import('@atomic/domain').Attempt[];
+  reviewItems: import('@atomic/domain').ReviewItem[];
+}> {
+  const progress = await loadProgress();
+  const attempts = await loadAttempts();
+  const reviewItems = await loadReviewItems();
+  return { progress: progress ?? null, attempts, reviewItems };
+}
+
+/**
+ * 把合并后的快照写回本地。只写"本地缺失或更旧"的部分，
+ * 不覆盖本地更新的数据（合并规则在 domain.mergeSnapshots，这里只负责持久化）。
+ */
+export async function applySnapshot(snapshot: {
+  progress: import('@atomic/domain').Progress | null;
+  attempts: import('@atomic/domain').Attempt[];
+  reviewItems: import('@atomic/domain').ReviewItem[];
+}): Promise<void> {
+  await db.transaction('rw', db.progress, db.attempts, db.reviewItems, async () => {
+    if (snapshot.progress) await saveProgress(snapshot.progress);
+
+    const existingAttempts = await db.attempts.toArray();
+    const attemptKeys = new Set(existingAttempts.map((a) => `${a.challengeId}:${a.createdAt}`));
+    const newAttempts = snapshot.attempts.filter(
+      (a) => !attemptKeys.has(`${a.challengeId}:${a.createdAt}`),
+    );
+    if (newAttempts.length) await db.attempts.bulkAdd(newAttempts as AttemptRow[]);
+
+    const existingReviews = await db.reviewItems.toArray();
+    const reviewMap = new Map(existingReviews.map((r) => [r.id, r]));
+    for (const item of snapshot.reviewItems) {
+      const id = `${item.sourceChallengeId}:${item.word}`;
+      const current = reviewMap.get(id as ReviewRow['id']);
+      // SRS 状态不回退：只写比本地更成熟的记录
+      if (!current || item.reviewedCount > current.reviewedCount) {
+        await db.reviewItems.put({ ...item, id });
+      }
+    }
+  });
+}

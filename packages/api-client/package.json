@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@atomic/db": "workspace:*"
+    "@atomic/db": "workspace:*",
+    "@atomic/domain": "workspace:*",
+    "@supabase/supabase-js": "^2.119.2"
   },
   "devDependencies": {
     "typescript": "5.9.3"
