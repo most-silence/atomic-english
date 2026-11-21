@@ -13,6 +13,7 @@
     "verify:pwa": "node scripts/verify-pwa.mjs",
     "verify:backend": "node scripts/verify-backend.mjs",
     "verify:cloud-ui": "node scripts/verify-cloud-ui.mjs",
+    "verify:persistence": "node scripts/verify-persistence.mjs",
     "docker:up": "bash scripts/start-docker.sh",
     "docker:down": "docker compose down"
   },

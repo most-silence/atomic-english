@@ -83,13 +83,15 @@ export default function App() {
   // 云同步初始化；只在一次同步成功后重载（syncing/error 不重载，避免打断用户）
   const [syncReload, setSyncReload] = useState(0);
   useEffect(() => {
-    let prevSyncedAt: string | null = null;
+    let prevRevision = 0;
     let unsubscribe: () => void = () => {};
     initCloud();
     onSignedInFlush();
     unsubscribe = orchestrator.subscribe((state) => {
-      if (state.lastSyncAt && state.lastSyncAt !== prevSyncedAt) {
-        prevSyncedAt = state.lastSyncAt;
+      // 用 revision 而非 lastSyncAt：登录换设备后 pull 写库必须触发重载，
+      // 即便时间戳因精度相同也不漏（lastSyncAt 相同但数据已变的情况真实存在）
+      if (state.revision !== prevRevision) {
+        prevRevision = state.revision;
         setSyncReload((n) => n + 1);
       }
     });

@@ -127,9 +127,10 @@ pnpm verify:ui          # 阶段一：9 环节全流程（Playwright + 系统 Ch
 pnpm verify:pwa         # 阶段二：10 环节 PWA + 音频 spike
 pnpm verify:backend     # 后端：栈可达/注册登录/三表读写/RLS 隔离/幂等
 pnpm verify:cloud-ui    # 云端：注册→答题→自动同步→另一浏览器登录拉回进度
+pnpm verify:persistence # 持久化：临时用户当天缓存/跨天重置 + 注册后跨设备拉回
 ```
 
-后两项需要先启动本地 Supabase 栈并填好 `.env.local`。端到端脚本都用真实交互而非 DOM 快照断言，并校验零控制台错误。
+后三项需要先启动本地 Supabase 栈并填好 `.env.local`。`verify:persistence` 还覆盖「注册后立刻答题」的同步竞态：pull 期间重新读本地快照再合并，避免刚写入的进度被空快照覆盖。端到端脚本都用真实交互而非 DOM 快照断言，并校验零控制台错误。
 
 ## 技术选型
 
