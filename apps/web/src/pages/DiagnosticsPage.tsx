@@ -6,6 +6,7 @@ import {
   getAudioCapabilities,
   AUDIO_CACHE_NAME,
   isKeepAliveActive,
+  loadAudioManifest,
   makeToneWavBlob,
   speak,
   startKeepAlive,
@@ -75,6 +76,9 @@ export default function DiagnosticsPage() {
 
   useEffect(() => {
     setCaps(getAudioCapabilities());
+    // manifest 加载是异步的：加载完成后再刷新一次能力，
+    // 否则诊断页首次渲染会误报「预录音频未加载」
+    void loadAudioManifest().then(() => setCaps(getAudioCapabilities()));
     void countCachedAudio().then(setCacheCount);
     void refreshAnalytics();
   }, [refreshAnalytics]);

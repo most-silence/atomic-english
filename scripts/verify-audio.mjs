@@ -45,7 +45,7 @@ try {
 
   // 3. 诊断页：预录音频状态与条目数
   await page.goto(BASE_URL + '?diag=1', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => Boolean(window.__atomicDiag?.capabilities), { timeout: 8000 });
+  await page.waitForFunction(() => window.__atomicDiag?.capabilities?.audioManifestLoaded === true, { timeout: 8000 });
   const caps = await page.evaluate(() => window.__atomicDiag.capabilities);
   check(caps.audioManifestLoaded === true, `manifest 应已加载: ${JSON.stringify(caps)}`);
   check(caps.audioEntryCount >= 200, `预录条目应 ≥200: ${caps.audioEntryCount}`);
