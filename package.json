@@ -22,7 +22,8 @@
     "docker:down": "docker compose down",
     "android:sync": "pnpm --filter @atomic/web build && pnpm --filter @atomic/mobile cap:sync",
     "android:build": "bash scripts/build-android.sh",
-    "android:open": "pnpm --filter @atomic/mobile android:open"
+    "android:open": "pnpm --filter @atomic/mobile android:open",
+    "android:debug": "bash scripts/android-debug.sh"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.2",

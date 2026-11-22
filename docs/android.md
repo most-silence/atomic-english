@@ -110,6 +110,36 @@ Web Speech API 实时合成（兜底，行为与旧版一致）
 
 代价：换音色/语速要重新生成音频并重出包；这是"离线可靠"换来的确定性与可控性。若将来需要任意文本发音（如用户自创句子），仍需 Web Speech 兜底——那条路径在真机上的限制由 `pwa-audio-spike.md` §4 记录。
 
+## 在电脑上调试真机 APK
+
+不用模拟器——USB 连一台 Android 手机即可在电脑上装包、截屏、看日志、甚至调试 WebView 内部的 DOM。前提：手机开启「开发者选项 → USB 调试」并用 USB 连到电脑，授权调试。
+
+`scripts/android-debug.sh` 封装了常用操作（自动发现已授权设备）：
+
+```bash
+bash scripts/android-debug.sh                    # 安装最新 APK 并启动（默认 all）
+bash scripts/android-debug.sh <设备号> install    # 只重装 APK（改代码后）
+bash scripts/android-debug.sh <设备号> start      # 只启动
+bash scripts/android-debug.sh <设备号> shot       # 截屏到 .workbuddy/phone-screen.png
+bash scripts/android-debug.sh <设备号> log        # 实时 logcat（查崩溃/报错）
+bash scripts/android-debug.sh <设备号> cdp        # 转发 WebView 调试端口
+bash scripts/android-debug.sh <设备号> verify-audio  # 端到端验证 APK 内音频走预录 mp3
+```
+
+设备号可由 `adb devices` 查到；不传则自动取第一台已授权设备。
+
+**调试 WebView 内部**（确认手机端真实行为的关键手段）：debug 构建的应用 WebView 暴露 CDP，`cdp` 子命令把它的调试端口转发到 `http://127.0.0.1:9222`，然后：
+
+- 浏览器打开 `chrome://inspect` → Devices → 找到 Atomic English → **inspect**，可像 DevTools 一样看 DOM、Console、Network；
+- 或跑 `verify-audio`：脚本连进 WebView，点播放后检查是否请求了 `/audio/challenge-*.mp3`，以此证明 APK 走的是预录音频而非无声的 Web Speech 兜底。
+
+这套方法是**真机实测**，比无头 Chrome 更能证明手机端行为。本机实测：Redmi（Android 15）上点播放后 WebView 请求了 `challenge-594.mp3`、manifest 加载成功、音频缓存存在、按钮进入播放态——预录音频链路在 APK 内真实生效。
+
+常见问题：
+- `adb devices` 看不到设备 → 检查 USB 调试授权、数据线是否支持传输；
+- 端口 5037 冲突 → 结束残留 adb 进程（`adb kill-server` 后重试）；
+- `cdp` 连不上 → 确认应用已启动且是 debug 构建（Release 签名包默认不可调试）。
+
 ## Release 签名（上架用）
 
 1. 生成 keystore：
