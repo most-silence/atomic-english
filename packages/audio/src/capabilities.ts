@@ -1,6 +1,7 @@
 import { detectPlatform, isIOS, isSafari, isStandalone } from './platform';
 import { isKeepAliveActive } from './keepAlive';
 import { getVoiceInfos } from './webSpeech';
+import { countAudioEntries, isAudioManifestLoaded } from './prerecorded';
 import type { AudioCapabilities } from './types';
 
 /**
@@ -13,6 +14,14 @@ export function getAudioCapabilities(): AudioCapabilities {
     typeof window !== 'undefined' && 'speechSynthesis' in window;
   const voices = getVoiceInfos();
   const notes: string[] = [];
+
+  const audioManifestLoaded = isAudioManifestLoaded();
+  const audioEntryCount = countAudioEntries();
+  if (!audioManifestLoaded) {
+    notes.push('预录音频未加载，当前回退到系统语音合成（Android WebView 可能无声）');
+  } else {
+    notes.push(`预录音频已就绪（${audioEntryCount} 条），离线可播放`);
+  }
 
   if (!hasSpeechSynthesis) {
     notes.push('当前浏览器不支持语音合成（Firefox Android 无此能力）');
@@ -44,6 +53,8 @@ export function getAudioCapabilities(): AudioCapabilities {
     voices,
     hasMediaSession: typeof navigator !== 'undefined' && 'mediaSession' in navigator,
     hasCacheApi: typeof caches !== 'undefined',
+    audioManifestLoaded,
+    audioEntryCount,
     autoplayPolicy:
       typeof nav.getAutoplayPolicy === 'function' ? nav.getAutoplayPolicy('audiocontext') : null,
     keepAliveActive: isKeepAliveActive(),

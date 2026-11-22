@@ -72,7 +72,7 @@ pnpm android:open
 | 后端地址 | 运行时 `/config.js` 注入 | 同左（在打包前生成 config.js） |
 | 本地数据 | IndexedDB | WebView 的 IndexedDB |
 | 云同步 | Supabase Auth | 同左（WebView 内 localStorage 持久化会话） |
-| 音频 | Web Speech API | WebView 的 Web Speech（受设备 TTS 引擎影响） |
+| 音频 | 预录音频优先 + Web Speech 兜底 | 同一套代码 + 内置音频（不依赖设备 TTS） |
 | 更新 | 重新构建镜像/静态资源 | 重新构建 APK 并安装 |
 
 **注意 config.js**：Capacitor 里没有 nginx 容器来动态生成 `/config.js`，WebView 直接读打包进去的 `apps/web/public/config.js`（本地占位，不注入真实 key）。要让 Android 版连上后端，构建前需要生成带真实配置的 `config.js`。做法是：
@@ -90,6 +90,26 @@ pnpm android:build
 
 这份 `config.js` 会被 `cap sync` 复制进 APK。它含的是 Publishable key（设计上可公开，RLS 按 uid 隔离），不是 Secret key。**不要把 `sb_secret_*` 写进去。**
 
+## 音频与离线（Web / Android 能力一致）
+
+**问题**：Android WebView 依赖系统 TTS 引擎，国产 ROM 常无英文语音包，`speechSynthesis.speak()` 静默失败——表现为"动画播完但没声音"。这在手机浏览器（Chrome 有 Google TTS）上不明显，但在 APK 里必现。
+
+**方案**：两端共用同一条降级链，实现在 `@atomic/audio` 的 `PrerecordedProvider`：
+
+```
+文本命中预录音频 manifest → <audio> 播放本地 mp3（主路径，离线可用）
+        ↓ 未命中（新题未生成 / 动态文本）
+Web Speech API 实时合成（兜底，行为与旧版一致）
+```
+
+- **预生成**：`scripts/generate-audio.py` 用 Edge TTS（微软在线语音，免费无密钥）把 30 道题句子 + 182 个去重词生成 mp3，写入 `apps/web/public/audio/`，并产出 `manifest.json`（文本→URL 映射）。新增题目后需重跑 `pnpm audio:generate`。
+- **随产物分发**：`apps/web/dist/audio/` 被 `cap sync` 复制进 APK 的 `assets/public/audio/`，共 212 条、约 3MB。Web 端由 SW 以 cache-first 惰性缓存（播过即离线可听）；APK 内置资源天然离线。
+- **启动时序**：`main.tsx` 在 `loadAudioManifest()` 完成后才渲染，保证首次点播放就能命中本地音频，不会掉进无声的兜底路径。
+- **诊断**：`?diag=1` 页显示"预录音频 N 条 · 离线可播"，`window.__atomicDiag.capabilities` 含 `audioManifestLoaded` / `audioEntryCount`。
+- **验证**：`pnpm verify:audio` 确认点播放真的请求了 mp3、manifest 加载、诊断状态正确。生产构建预览同样通过，与 APK 走同一路径。
+
+代价：换音色/语速要重新生成音频并重出包；这是"离线可靠"换来的确定性与可控性。若将来需要任意文本发音（如用户自创句子），仍需 Web Speech 兜底——那条路径在真机上的限制由 `pwa-audio-spike.md` §4 记录。
+
 ## Release 签名（上架用）
 
 1. 生成 keystore：
@@ -105,6 +125,6 @@ pnpm android:build
 
 ## 已知限制
 
-- **Android WebView 的 Web Speech**：发音音色与行为取决于设备安装的 TTS 引擎，和 Chrome/iOS Safari 不完全一致。真机需按 `pwa-audio-spike.md` 的清单验证。
+- **动态文本的 Web Speech 兜底**：课程内句子/单词已走内置预录音频，不依赖设备 TTS；只有 manifest 未命中的动态文本才回退到 Web Speech，此时受设备 TTS 引擎影响。核心学习路径已避开该限制。
 - **混合内容**：`capacitor.config.ts` 设了 `mixedContentMode: always` 以便本地联调 http 后端；正式版用 https 后应收紧为默认。
 - **自动更新**：Capacitor 壳本身不走 Web 的热更新逻辑，改代码需重新出 APK。

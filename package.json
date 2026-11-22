@@ -16,6 +16,8 @@
     "verify:persistence": "node scripts/verify-persistence.mjs",
     "verify:mobile": "node scripts/verify-mobile.mjs",
     "verify:login": "node scripts/verify-login.mjs",
+    "verify:audio": "node scripts/verify-audio.mjs",
+    "audio:generate": "python scripts/generate-audio.py",
     "docker:up": "bash scripts/start-docker.sh",
     "docker:down": "docker compose down",
     "android:sync": "pnpm --filter @atomic/web build && pnpm --filter @atomic/mobile cap:sync",

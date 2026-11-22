@@ -180,6 +180,11 @@ export default function DiagnosticsPage() {
         <Row k="平台" v={caps?.platform ?? '—'} />
         <Row k="语音合成支持" v={caps?.hasSpeechSynthesis ? '支持' : '不支持'} level={caps?.hasSpeechSynthesis ? 'ok' : 'bad'} />
         <Row k="可用语音数" v={String(caps?.voiceCount ?? 0)} level={(caps?.voiceCount ?? 0) > 0 ? 'ok' : 'warn'} />
+        <Row
+          k="预录音频"
+          v={caps?.audioManifestLoaded ? `${caps.audioEntryCount} 条 · 离线可播` : '未加载 · 回退系统合成'}
+          level={caps?.audioManifestLoaded ? 'ok' : 'warn'}
+        />
         <Row k="需用户手势" v={caps?.requiresUserGesture ? '是（iOS 强制）' : '否'} level={caps?.requiresUserGesture ? 'warn' : 'ok'} />
         <Row k="Media Session" v={caps?.hasMediaSession ? '支持' : '不支持'} />
         <Row k="Cache API" v={caps?.hasCacheApi ? '支持' : '不支持'} level={caps?.hasCacheApi ? 'ok' : 'bad'} />

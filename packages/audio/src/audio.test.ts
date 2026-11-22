@@ -114,3 +114,41 @@ describe('makeToneWavBlob', () => {
     expect(peak).toBeLessThan(100); // 远低于满刻度 32767
   });
 });
+
+import {
+  countAudioEntries,
+  findAudioUrl,
+  isAudioManifestLoaded,
+  normalizeKey,
+  setAudioManifestForTest,
+} from './prerecorded';
+
+describe('预录音频查表', () => {
+  it('normalizeKey 去空白、转小写、压缩空格', () => {
+    expect(normalizeKey('  Hello   World  ')).toBe('hello world');
+    expect(normalizeKey('I have started surfing')).toBe('i have started surfing');
+  });
+
+  it('未加载 manifest 时查不到音频', () => {
+    setAudioManifestForTest(null);
+    expect(isAudioManifestLoaded()).toBe(false);
+    expect(countAudioEntries()).toBe(0);
+    expect(findAudioUrl('anything')).toBeNull();
+  });
+
+  it('加载后能按归一化文本命中，包括句子与单词', () => {
+    setAudioManifestForTest({
+      voice: 'en-US-AriaNeural',
+      rate: '-10%',
+      entries: {
+        'i have started surfing again after years off.': '/audio/challenge-593.mp3',
+        weather: '/audio/word-weather.mp3',
+      },
+    });
+    expect(isAudioManifestLoaded()).toBe(true);
+    expect(countAudioEntries()).toBe(2);
+    expect(findAudioUrl('  I Have Started Surfing Again After Years Off. ')).toBe('/audio/challenge-593.mp3');
+    expect(findAudioUrl('WEATHER')).toBe('/audio/word-weather.mp3');
+    expect(findAudioUrl('not in manifest')).toBeNull();
+  });
+});

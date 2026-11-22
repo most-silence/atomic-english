@@ -12,7 +12,7 @@
  * 缓存带版本号，activate 时清理旧版本，避免旧产物泄漏。
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `atomic-shell-${VERSION}`;
 const ASSET_CACHE = `atomic-asset-${VERSION}`;
 const DATA_CACHE = `atomic-data-${VERSION}`;
@@ -76,6 +76,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(cacheFirst(req, ASSET_CACHE));
+    return;
+  }
+  // 预录音频与清单：cache-first，首次播放后离线可用。
+  // 不预缓存全部 3MB，避免拖慢安装；按播放需求惰性缓存。
+  if (url.pathname.startsWith('/audio/')) {
     event.respondWith(cacheFirst(req, ASSET_CACHE));
     return;
   }

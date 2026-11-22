@@ -39,6 +39,10 @@ export interface AudioCapabilities {
   voices: VoiceInfo[];
   hasMediaSession: boolean;
   hasCacheApi: boolean;
+  /** 预生成音频 manifest 是否已加载（预录路径可用性） */
+  audioManifestLoaded: boolean;
+  /** 预生成音频条目数 */
+  audioEntryCount: number;
   /** Chrome 专有：'allowed' | 'allowed-muted' | 'disallowed' */
   autoplayPolicy: string | null;
   keepAliveActive: boolean;

@@ -126,11 +126,13 @@ try {
   await page.waitForFunction(() => window.__atomicPwa?.swRegistered === true, { timeout: 10000 });
   const swInfo = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.getRegistration();
-    const cache = await caches.open('atomic-shell-v1');
-    const keys = await cache.keys();
+    // 动态找当前 shell 缓存：SW 版本号会随 sw.js 改动提升，不硬编码
+    const shellName = (await caches.keys()).find((k) => k.startsWith('atomic-shell-'));
+    const keys = shellName ? await (await caches.open(shellName)).keys() : [];
     return {
       scope: reg?.scope,
       controller: !!navigator.serviceWorker.controller,
+      shellName: shellName ?? null,
       shellKeys: keys.map((r) => new URL(r.url).pathname),
     };
   });

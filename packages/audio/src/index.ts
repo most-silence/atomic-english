@@ -9,6 +9,15 @@
  */
 import { WebSpeechProvider, warmUpVoices, unlockAudio } from './webSpeech';
 import { HtmlAudioProvider } from './htmlAudio';
+import {
+  PrerecordedProvider,
+  countAudioEntries,
+  findAudioUrl,
+  isAudioManifestLoaded,
+  loadAudioManifest,
+  normalizeKey,
+  setAudioManifestForTest,
+} from './prerecorded';
 import type { AudioProvider, PlaybackHandle } from './types';
 
 export type {
@@ -42,10 +51,21 @@ export {
   stopKeepAlive,
   updateMediaSession,
 } from './keepAlive';
+export {
+  PrerecordedProvider,
+  countAudioEntries,
+  findAudioUrl,
+  isAudioManifestLoaded,
+  loadAudioManifest,
+  normalizeKey,
+  setAudioManifestForTest,
+} from './prerecorded';
 export { getAudioCapabilities } from './capabilities';
 export { detectPlatform, isIOS, isSafari, isStandalone } from './platform';
 
-let activeProvider: AudioProvider = new WebSpeechProvider();
+// 默认走「预录音频优先、Web Speech 兜底」的统一链路。
+// Web 与 Android（Capacitor 壳）共用同一份代码与静态资源，能力一致。
+let activeProvider: AudioProvider = new PrerecordedProvider();
 let htmlProvider: HtmlAudioProvider | null = null;
 
 /** 切换音频实现（云 TTS、预录音频等接入点）。 */
