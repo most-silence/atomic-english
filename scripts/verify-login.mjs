@@ -45,16 +45,20 @@ try {
   check(!!emptyErr && emptyErr.includes('请输入'), `空输入点注册应有错误提示: ${emptyErr}`);
   report.steps.push({ step: 'empty-input-error', error: emptyErr });
 
-  // 4. 后端不可达时点注册 -> 应有明确网络错误（不静默）
-  await page.locator('input[type=email]').fill('nobody@example.com');
+  // 4. 点注册 -> 必须有明确反馈，不能静默。
+  // 后端可达时应该真注册成功进入登录态；不可达时应该显示网络错误；
+  // 需要邮箱确认时显示 info。三种都算"有反馈"，只有三者全无才是 bug。
+  const uniqueEmail = `login-${Date.now()}@example.com`;
+  await page.locator('input[type=email]').fill(uniqueEmail);
   await page.locator('input[type=password]').fill('Verify12345!');
   await page.getByRole('button', { name: '注册', exact: true }).click();
-  // 等错误或成功出现
   await page.waitForTimeout(3000);
   const errText = await page.locator('[data-testid="cloud-error"]').textContent().catch(() => null);
   const infoText = await page.locator('[data-testid="cloud-info"]').textContent().catch(() => null);
-  check(!!errText || !!infoText, `点注册后应有错误或结果反馈，不能静默: err=${errText} info=${infoText}`);
-  report.steps.push({ step: 'submit-feedback', error: errText, info: infoText });
+  const signedIn = await page.locator('[data-testid="cloud-row"]').count();
+  check(!!errText || !!infoText || signedIn > 0,
+    `点注册后应有反馈（成功登录/错误/提示），不能静默: err=${errText} info=${infoText} signedIn=${signedIn}`);
+  report.steps.push({ step: 'submit-feedback', error: errText, info: infoText, signedIn });
 
   // 5. 登录卡在词汇列表上方（DOM 顺序）
   const order = await page.evaluate(() => {

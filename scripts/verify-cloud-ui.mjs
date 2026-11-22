@@ -49,7 +49,9 @@ try {
   await pageA.locator('.transcript-input').fill('I start');
   await pageA.locator('.primary-btn').first().click();
   await pageA.waitForSelector('.sentence .miss');
-  // 记录答题前的 lastSyncAt，答题后必须等它变化（2 秒延迟 push 完成）
+  // 同步状态条只在复习 tab 渲染，切过去读 lastSyncAt 并等它变化（markDirty 有 2 秒延迟）
+  await pageA.locator('.tab').nth(2).click();
+  await pageA.waitForSelector('[data-testid=cloud-row]');
   const lastSyncBefore = await pageA.locator('[data-testid=cloud-row]').getAttribute('data-last-sync');
   await pageA.waitForFunction((prev) => {
     const el = document.querySelector('[data-testid=cloud-row]');
@@ -84,6 +86,8 @@ try {
 
   // 登录后 orchestrator 全量 pull，进度应从云端合回来：
   // A 做完 #593，B 应停在 #594，复习页应有 7 个词
+  // 切回挑战 tab 再读进度（登录是在复习 tab 完成的）
+  await pageB.locator('.tab').nth(0).click();
   await pageB.waitForSelector('.transcript-input');
   await pageB.waitForFunction(() => {
     const meta = document.querySelector('.challenge-meta');
